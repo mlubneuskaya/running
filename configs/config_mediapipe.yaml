@@ -1,0 +1,9 @@
+model:
+  type: "mediapipe"
+  name: "pose_landmarker_heavy.task"
+  device: "cpu"
+
+paths:
+  input: "./data/input"
+  output: "./data/output/mediapipe"
+  models: "./data/models/mediapipe"

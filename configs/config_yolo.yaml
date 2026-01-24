@@ -1,0 +1,9 @@
+model:
+  type: "yolo"
+  name: "yolo26l-pose.pt"
+  device: "mps"
+
+paths:
+  input: "./data/input"
+  output: "./data/output/yolo/pose_data"
+  models: "./data/models/yolo"
