@@ -3,7 +3,7 @@ import json
 import os
 import logging
 
-from src.utils.drawing import draw_runner_skeleton
+from src.utils.overlay.drawing import draw_runner_skeleton
 
 logger = logging.getLogger(__name__)
 

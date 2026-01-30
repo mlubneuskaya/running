@@ -11,7 +11,7 @@ from src.processors.mediapipe import MediaPipeProcessor
 from src.utils.file_discovery import get_video_files
 from src.utils.get_path import get_mirror_path
 from src.utils.load_config import load_config
-from src.utils.filtering import filter_main_runner
+from src.utils.detection.filtering import filter_main_runner
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ import os
 import logging
 
 from src.utils.get_path import get_mirror_path
-from src.utils.overlay import create_overlay_video
+from src.utils.overlay.overlay import create_overlay_video
 from src.utils.file_discovery import get_video_files
 from src.utils.load_config import load_config
 

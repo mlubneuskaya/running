@@ -32,7 +32,7 @@ class YoloProcessor(PoseModel):
         if fps <= 0:
             fps = 30.0
 
-        results_generator = self.model.track(
+        results_generator = self.model.track(  # TODO move model parameters to config
             source=video_path,
             persist=True,
             verbose=False,
@@ -47,7 +47,7 @@ class YoloProcessor(PoseModel):
 
         all_frames_data = []
 
-        for frame_idx, r in enumerate(results_generator):
+        for frame_idx, r in enumerate(results_generator):  #TODO frame postprocessing -> function
             frame_candidates = []
 
             timestamp_ms = (frame_idx / fps) * 1000.0
@@ -144,7 +144,7 @@ class YoloProcessor(PoseModel):
 
         return frame_candidates
 
-    def reset(self):
+    def reset(self):  # TODO processor deleting -> here?
         """Resets the tracker state between videos."""
         try:
             self.model.predictor = None
