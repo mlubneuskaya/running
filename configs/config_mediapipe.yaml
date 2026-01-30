@@ -5,5 +5,5 @@ model:
 
 paths:
   input: "./data/input"
-  output: "./data/output/mediapipe"
+  output: "./data/output/mediapipe/pose_data"
   models: "./data/models/mediapipe"

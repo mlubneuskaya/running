@@ -1,6 +1,5 @@
 import os
 import argparse
-import cv2
 import json
 import logging
 import numpy as np
@@ -11,6 +10,7 @@ from src.processors.yolo import YoloProcessor
 from src.processors.mediapipe import MediaPipeProcessor
 from src.utils.file_discovery import get_video_files
 from src.utils.load_config import load_config
+from src.utils.filtering import filter_main_runner
 
 logger = logging.getLogger(__name__)
 
@@ -28,37 +28,13 @@ def save_pose_data(data_list: List[Dict], output_path: str):
 
 
 def process_video(video_file: str, output_dir: str, processor: PoseModel):
-    filename = os.path.basename(video_file)
     os.makedirs(output_dir, exist_ok=True)
 
-    cap = cv2.VideoCapture(video_file)
-    if not cap.isOpened():
-        logger.error(f"Could not open {video_file}")
-        return
+    full_run_data = processor.process_video(video_file)
+    if isinstance(processor, YoloProcessor):
+        full_run_data = filter_main_runner(full_run_data)  # TODO all None value handling
 
-    fps = int(cap.get(cv2.CAP_PROP_FPS))
-
-    full_run_data = []
-
-    frame_index = 0
-    while cap.isOpened():
-        success, frame = cap.read()
-        if not success:
-            break
-
-        timestamp_ms = (frame_index / fps) * 1000.0
-
-        data = processor.process_frame(frame, timestamp_ms)
-
-        full_run_data.append(data)
-
-        frame_index += 1
-
-    processor.reset()
-
-    cap.release()
-
-    name_only = os.path.splitext(filename)[0]
+    name_only = os.path.splitext(os.path.basename(video_file))[0]
     json_filename = f"{name_only}.json"
     json_path = os.path.join(output_dir, json_filename)
 
@@ -89,10 +65,10 @@ def main():
 
     if model_type == "yolo":
         logger.info(f"Initializing YOLO ({cfg['model']['device']})...")
-        processor = YoloProcessor(model_path=model_path, device=cfg["model"]["device"])
+        processor_class = lambda path: YoloProcessor(model_path=path, device=cfg["model"]["device"])
     elif model_type == "mediapipe":
         logger.info("Initializing MediaPipe...")
-        processor = MediaPipeProcessor(model_path=model_path)
+        processor_class = MediaPipeProcessor
     else:
         raise ValueError(f"Model {model_type} not supported")
 
@@ -109,7 +85,10 @@ def main():
         return
 
     for video_file in video_files:
-        process_video(video_file, cfg["paths"]["output"], processor, cfg)
+        processor = processor_class(model_path)
+        logger.info(f"Processing {video_file}")
+        process_video(video_file, cfg["paths"]["output"], processor)
+        del processor
 
 
 if __name__ == "__main__":

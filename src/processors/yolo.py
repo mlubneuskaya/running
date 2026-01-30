@@ -1,14 +1,12 @@
+import cv2
 import numpy as np
 from ultralytics import YOLO
-from typing import Dict, Optional, Any
+from typing import List, Dict, Any, Optional
 
 from src.processors.base import PoseModel
 
 
 class YoloProcessor(PoseModel):
-    # Mapping YOLOv8 COCO keypoint indices to standard names
-    # 5:L-Shoulder, 6:R-Shoulder, 11:L-Hip, 12:R-Hip,
-    # 13:L-Knee, 14:R-Knee, 15:L-Ankle, 16:R-Ankle
     KEYPOINT_MAP = {
         5: "left_shoulder",
         6: "right_shoulder",
@@ -26,42 +24,135 @@ class YoloProcessor(PoseModel):
         self.device = device
         self.model.to(device)
 
+    def process_video(self, video_path: str) -> Optional[List[List[Dict[str, Any]]]]:
+
+        cap = cv2.VideoCapture(video_path)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        cap.release()
+
+        if fps <= 0: fps = 30.0
+
+        results_generator = self.model.track(
+            source=video_path,
+            persist=True,
+            verbose=False,
+            device=self.device,
+            tracker="./configs/botsort_tracker_yolo.yaml",
+            conf=0.1,
+            iou=0.7,
+            stream=True,
+            visualize=False,
+            batch=4,
+        )
+
+        all_frames_data = []
+
+        for frame_idx, r in enumerate(results_generator):
+            frame_candidates = []
+
+            timestamp_ms = (frame_idx / fps) * 1000.0
+
+            if r.boxes and r.boxes.id is not None:
+                boxes = r.boxes.xywh.cpu().numpy()
+                track_ids = r.boxes.id.cpu().numpy()
+
+                if r.keypoints is not None:
+                    all_keypoints = r.keypoints.data.cpu().numpy()
+                else:
+                    all_keypoints = None
+
+                for i, box in enumerate(boxes):
+                    x, y, w, h = box
+                    area = w * h
+
+                    candidate = {
+                        "timestamp_ms": timestamp_ms,
+                        "track_id": int(track_ids[i]),
+                        "bbox_area": float(area),
+                        "bbox": box.tolist(),
+                    }
+
+                    if all_keypoints is not None:
+                        person_kpts = all_keypoints[i]
+                        candidate["raw_keypoints"] = person_kpts
+
+                        for idx, name in self.KEYPOINT_MAP.items():
+                            kp = person_kpts[idx]
+                            candidate[name] = (float(kp[0]), float(kp[1]), float(kp[2]))
+
+                    frame_candidates.append(candidate)
+
+            all_frames_data.append(frame_candidates)
+
+        return all_frames_data
+
+
     def process_frame(
-        self, frame: np.ndarray, timestamp_ms: float
-    ) -> Optional[Dict[str, Any]]:
+            self, frame: np.ndarray, timestamp_ms: float
+    ) -> List[Dict[str, Any]]:
         """
-        Runs inference, filters for the main runner, and standardizes output.
-        Returns None if no runner is detected.
+        Runs tracking and returns ALL detected people in the frame.
+        Global filtering (selecting the main runner) happens later in main.py.
         """
-        results = self.model(frame, verbose=False)
 
-        if not results or results[0].boxes is None:
-            return None
+        results = self.model.track(
+            source=frame,
+            persist=True,
+            verbose=False,
+            device=self.device,
+            tracker="./configs/botsort_tracker_yolo.yaml",
+            conf=0.1,
+            iou=0.7,
+        )
 
-        boxes = results[0].boxes.xywh.cpu().numpy()
+        if not results or not results[0].boxes:
+            return []
 
-        best_person_idx = -1
-        max_area = 0
+        r = results[0]
+        boxes = r.boxes.xywh.cpu().numpy()
+
+        if r.boxes.id is not None:
+            track_ids = r.boxes.id.cpu().numpy()
+        else:
+            track_ids = [-1] * len(boxes)
+
+        if r.keypoints is None:
+            return []
+
+        all_keypoints = r.keypoints.data.cpu().numpy()  # Shape: (N, 17, 3)
+
+        frame_candidates = []
 
         for i, box in enumerate(boxes):
-            area = box[2] * box[3]
-            if area > max_area:
-                max_area = area
-                best_person_idx = i
+            _, _, w, h = box
+            area = w * h
 
-        if best_person_idx == -1:
-            return None
+            person_kpts = all_keypoints[i]
 
-        raw_keypoints = results[0].keypoints.data[best_person_idx].cpu().numpy()
+            candidate = {
+                "timestamp_ms": timestamp_ms,
+                "track_id": int(track_ids[i]),
+                "bbox_area": float(area),
+                "bbox": box.tolist(),
+                "raw_keypoints": person_kpts,
+            }
 
-        processed_data = {
-            "timestamp_ms": timestamp_ms,
-            "raw_keypoints": raw_keypoints,
-            "bbox": boxes[best_person_idx],
-        }
+            for idx, name in self.KEYPOINT_MAP.items():
+                kp = person_kpts[idx]
+                candidate[name] = (float(kp[0]), float(kp[1]), float(kp[2]))
 
-        for idx, name in self.KEYPOINT_MAP.items():
-            kp = raw_keypoints[idx]
-            processed_data[name] = (float(kp[0]), float(kp[1]), float(kp[2]))
+            frame_candidates.append(candidate)
 
-        return processed_data
+        return frame_candidates
+
+    def reset(self):
+        """Resets the tracker state between videos."""
+        try:
+            self.model.predictor = None
+        except AttributeError:
+            pass
+
+        try:
+            self.model.trackers = None
+        except AttributeError:
+            pass

@@ -15,6 +15,9 @@ class PoseModel(ABC):
         """
         pass
 
+    def process_video(self, video_file: str) -> list:
+        pass
+
     def reset(self):
         pass
 

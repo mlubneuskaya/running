@@ -29,7 +29,7 @@ process-yolo:
 	@echo "Starting YOLO Processing..."
 	$(PYTHON) ./scripts/run_pose_detection.py --config $(CONFIG_YOLO)
 
-process-mp:
+process-mediapipe:
 	@echo "Starting MediaPipe Processing..."
 	$(PYTHON) ./scripts/run_pose_detection.py --config $(CONFIG_MP)
 
@@ -41,7 +41,10 @@ overlay-mediapipe:
 	@echo "Generating Overlay Videos..."
 	$(PYTHON) ./scripts/run_overlay.py --config $(CONFIG_OVERLAY_MEDIAPIPE)
 
-all: process-yolo overlay-yolo
+yolo: process-yolo overlay-yolo
+	@echo "Pipeline complete! Results saved to ./data/output"
+
+mediapipe: process-mediapipe overlay-mediapipe
 	@echo "Pipeline complete! Results saved to ./data/output"
 
 clean:

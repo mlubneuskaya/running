@@ -1,7 +1,7 @@
 import mediapipe as mp
 import cv2
 import numpy as np
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from src.processors.base import PoseModel
 
@@ -33,6 +33,36 @@ class MediaPipeProcessor(PoseModel):
 
         self.landmarker = self.PoseLandmarker.create_from_options(self.options)
 
+    def process_video(self, video_file: str) -> Optional[List[Dict[str, Any]]]:
+
+        cap = cv2.VideoCapture(video_file)
+        if not cap.isOpened():
+            return None
+
+        fps = int(cap.get(cv2.CAP_PROP_FPS))
+
+        full_run_data = []
+
+        frame_index = 0
+        while cap.isOpened():
+            success, frame = cap.read()
+            if not success:
+                break
+
+            timestamp_ms = (frame_index / fps) * 1000.0
+
+            data = self.process_frame(frame, timestamp_ms)
+
+            full_run_data.append(data)
+
+            frame_index += 1
+
+        self.reset()
+
+        cap.release()
+
+        return full_run_data
+
     def process_frame(
         self, frame: np.ndarray, timestamp_ms: float
     ) -> Optional[Dict[str, Any]]:
@@ -59,7 +89,7 @@ class MediaPipeProcessor(PoseModel):
 
         processed_data = {
             "timestamp_ms": timestamp_ms,
-            "raw_landmarks": clean_landmarks,  # Now this is just a standard list!
+            "raw_landmarks": clean_landmarks,
         }
 
         for idx, name in self.KEYPOINT_MAP.items():
