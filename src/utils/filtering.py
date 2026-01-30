@@ -42,8 +42,6 @@ def filter_main_runner(all_frames_data: List[List[Dict[str, Any]]]) -> List[Opti
 
         variance = np.std(values)
 
-        print(f"{tid:<5} {len(values):<8} {variance:.5f}")
-
         if variance > max_variance:
             max_variance = variance
             best_track_id = tid

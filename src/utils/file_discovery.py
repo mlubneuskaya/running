@@ -1,17 +1,43 @@
 import os
 import glob
-from typing import List
+from typing import List, Union
 
 
-def get_video_files(input_path: str) -> List[str]:
-    video_extensions = ["*.mp4", "*.MP4", "*.mov", "*.MOV"]
+def get_json_files(input_path: Union[str, List[str]]) -> List[str]:
+    extensions = ['.json']
 
-    if os.path.isfile(input_path):
-        return [input_path]
-    elif os.path.isdir(input_path):
-        video_files = []
-        for ext in video_extensions:
-            video_files.extend(glob.glob(os.path.join(input_path, ext)))
-        return video_files
+    return get_files(input_path, extensions)
+
+
+def get_video_files(input_path: Union[str, List[str]]) -> List[str]:
+    extensions = ["*.mp4", "*.MP4", "*.mov", "*.MOV"]
+
+    return get_files(input_path, extensions)
+
+
+def get_files(input_path: Union[str, List[str]], extensions: List[str]) -> List[str]:
+    """
+    Returns a list of files from:
+    - A single file path
+    - A directory (recursively searching subdirectories)
+    - A list of directories or files
+    """
+    if isinstance(input_path, str):
+        search_paths = [input_path]
     else:
-        raise FileNotFoundError(f"Input path not found: {input_path}")
+        search_paths = input_path
+
+    found_files = []
+
+    for path in search_paths:
+        if os.path.isfile(path):
+            found_files.append(path)
+        elif os.path.isdir(path):
+            for ext in extensions:
+                found_files.extend(
+                    glob.glob(os.path.join(path, "**", ext), recursive=True)
+                )
+        else:
+            raise FileNotFoundError(f"Input path not found: {path}")
+
+    return sorted(list(set(found_files)))

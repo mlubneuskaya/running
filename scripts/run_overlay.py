@@ -2,6 +2,7 @@ import argparse
 import os
 import logging
 
+from src.utils.get_path import get_mirror_path
 from src.utils.overlay import create_overlay_video
 from src.utils.file_discovery import get_video_files
 from src.utils.load_config import load_config
@@ -34,20 +35,21 @@ def main():
     video_files = get_video_files(video_dir)
 
     for video_path in video_files:
-        filename = os.path.basename(video_path)
-        name_only = os.path.splitext(filename)[0]
 
-        json_path = os.path.join(json_dir, f"{name_only}.json")
-        output_path = os.path.join(output_dir, f"{name_only}_overlay.mp4")
+        json_path = get_mirror_path(video_path, video_dir, json_dir, ".json")
+
+        output_path = get_mirror_path(video_path, video_dir, output_dir, "_overlay.mp4")
+
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         if os.path.exists(json_path):
             try:
                 create_overlay_video(video_path, json_path, output_path)
             except Exception as e:
-                logger.error(f"Failed to process {filename}: {e}")
+                logger.error(f"Failed to process {os.path.basename(video_path)}: {e}")
         else:
             logger.info(
-                f"Skipping {filename}: No matching JSON found (looked for {json_path})"
+                f"Skipping {os.path.basename(video_path)}: No matching JSON found (looked for {json_path})"
             )
 
 

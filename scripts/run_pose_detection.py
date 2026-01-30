@@ -9,6 +9,7 @@ from src.processors.base import PoseModel
 from src.processors.yolo import YoloProcessor
 from src.processors.mediapipe import MediaPipeProcessor
 from src.utils.file_discovery import get_video_files
+from src.utils.get_path import get_mirror_path
 from src.utils.load_config import load_config
 from src.utils.filtering import filter_main_runner
 
@@ -27,18 +28,12 @@ def save_pose_data(data_list: List[Dict], output_path: str):
         json.dump(data_list, f, default=convert, indent=4)
 
 
-def process_video(video_file: str, output_dir: str, processor: PoseModel):
-    os.makedirs(output_dir, exist_ok=True)
-
+def process_video(video_file: str, output_json_path: str, processor: PoseModel):
     full_run_data = processor.process_video(video_file)
     if isinstance(processor, YoloProcessor):
         full_run_data = filter_main_runner(full_run_data)  # TODO all None value handling
 
-    name_only = os.path.splitext(os.path.basename(video_file))[0]
-    json_filename = f"{name_only}.json"
-    json_path = os.path.join(output_dir, json_filename)
-
-    save_pose_data(full_run_data, json_path)
+    save_pose_data(full_run_data, output_json_path)
 
 
 def main():
@@ -84,10 +79,16 @@ def main():
         logger.warning(f"No video files found in {input_path}")
         return
 
+    output_root = cfg["paths"]["output"]
+
     for video_file in video_files:
+        target_json_path = get_mirror_path(video_file, input_path, output_root, ".json")
+
+        os.makedirs(os.path.dirname(target_json_path), exist_ok=True)
+
         processor = processor_class(model_path)
         logger.info(f"Processing {video_file}")
-        process_video(video_file, cfg["paths"]["output"], processor)
+        process_video(video_file=video_file, output_json_path=target_json_path, processor=processor)
         del processor
 
 

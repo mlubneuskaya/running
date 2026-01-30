@@ -4,6 +4,6 @@ model:
   device: "cpu"
 
 paths:
-  input: "./data/input"
+  input: "./data/test"
   output: "./data/output/mediapipe/pose_data"
   models: "./data/models/mediapipe"
