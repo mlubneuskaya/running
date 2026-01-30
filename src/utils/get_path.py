@@ -1,7 +1,9 @@
 import os
 
 
-def get_mirror_path(source_file: str, source_root: str, target_root: str, new_ext: str = None) -> str:
+def get_mirror_path(
+    source_file: str, source_root: str, target_root: str, new_ext: str = None
+) -> str:
     """
     Generates a target file path that mirrors the subdirectory structure of the source.
 

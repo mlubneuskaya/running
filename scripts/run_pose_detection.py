@@ -31,7 +31,9 @@ def save_pose_data(data_list: List[Dict], output_path: str):
 def process_video(video_file: str, output_json_path: str, processor: PoseModel):
     full_run_data = processor.process_video(video_file)
     if isinstance(processor, YoloProcessor):
-        full_run_data = filter_main_runner(full_run_data)  # TODO all None value handling
+        full_run_data = filter_main_runner(
+            full_run_data
+        )  # TODO all None value handling
 
     save_pose_data(full_run_data, output_json_path)
 
@@ -60,7 +62,9 @@ def main():
 
     if model_type == "yolo":
         logger.info(f"Initializing YOLO ({cfg['model']['device']})...")
-        processor_class = lambda path: YoloProcessor(model_path=path, device=cfg["model"]["device"])
+        processor_class = lambda path: YoloProcessor(
+            model_path=path, device=cfg["model"]["device"]
+        )
     elif model_type == "mediapipe":
         logger.info("Initializing MediaPipe...")
         processor_class = MediaPipeProcessor
@@ -88,7 +92,11 @@ def main():
 
         processor = processor_class(model_path)
         logger.info(f"Processing {video_file}")
-        process_video(video_file=video_file, output_json_path=target_json_path, processor=processor)
+        process_video(
+            video_file=video_file,
+            output_json_path=target_json_path,
+            processor=processor,
+        )
         del processor
 
 

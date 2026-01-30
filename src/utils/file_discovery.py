@@ -4,7 +4,7 @@ from typing import List, Union
 
 
 def get_json_files(input_path: Union[str, List[str]]) -> List[str]:
-    extensions = ['.json']
+    extensions = [".json"]
 
     return get_files(input_path, extensions)
 

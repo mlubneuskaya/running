@@ -34,7 +34,6 @@ class MediaPipeProcessor(PoseModel):
         self.landmarker = self.PoseLandmarker.create_from_options(self.options)
 
     def process_video(self, video_path: str) -> Optional[List[Dict[str, Any]]]:
-
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             return None

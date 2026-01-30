@@ -35,7 +35,6 @@ def main():
     video_files = get_video_files(video_dir)
 
     for video_path in video_files:
-
         json_path = get_mirror_path(video_path, video_dir, json_dir, ".json")
 
         output_path = get_mirror_path(video_path, video_dir, output_dir, "_overlay.mp4")

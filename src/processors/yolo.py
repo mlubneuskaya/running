@@ -25,12 +25,12 @@ class YoloProcessor(PoseModel):
         self.model.to(device)
 
     def process_video(self, video_path: str) -> Optional[List[List[Dict[str, Any]]]]:
-
         cap = cv2.VideoCapture(video_path)
         fps = cap.get(cv2.CAP_PROP_FPS)
         cap.release()
 
-        if fps <= 0: fps = 30.0
+        if fps <= 0:
+            fps = 30.0
 
         results_generator = self.model.track(
             source=video_path,
@@ -86,9 +86,8 @@ class YoloProcessor(PoseModel):
 
         return all_frames_data
 
-
     def process_frame(
-            self, frame: np.ndarray, timestamp_ms: float
+        self, frame: np.ndarray, timestamp_ms: float
     ) -> List[Dict[str, Any]]:
         """
         Runs tracking and returns ALL detected people in the frame.

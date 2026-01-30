@@ -35,6 +35,7 @@ venv.bak/
 data/
 
 models/*
+*.pt
 
 .ipynb_checkpoints
 *.ipynb
