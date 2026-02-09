@@ -33,6 +33,7 @@ env.bak/
 venv.bak/
 
 data/
+configs/
 
 models/*
 *.pt

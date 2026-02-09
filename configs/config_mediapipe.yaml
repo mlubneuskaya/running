@@ -1,9 +1,0 @@
-model:
-  type: "mediapipe"
-  name: "pose_landmarker_heavy.task"
-  device: "cpu"
-
-paths:
-  input: "./data/input/outdoor"
-  output: "./data/output/mediapipe/pose_data"
-  models: "./data/models/mediapipe"

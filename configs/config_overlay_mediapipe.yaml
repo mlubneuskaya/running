@@ -1,6 +1,0 @@
-paths:
-  video_input: "./data/input/outdoor"
-
-  json_input: "./data/output/mediapipe/pose_data"
-
-  output: "./data/output/mediapipe/overlays"

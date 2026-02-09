@@ -1,6 +1,0 @@
-paths:
-  video_input: "./data/input"
-
-  json_input: "./data/output/yolo/pose_data"
-
-  output: "./data/output/yolo/overlays"
