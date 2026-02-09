@@ -1,9 +1,10 @@
 import mediapipe as mp
 import cv2
 import numpy as np
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 
 from src.processors.base import PoseModel
+from src.utils.roi import ROI
 
 
 class MediaPipeProcessor(PoseModel):
@@ -44,7 +45,7 @@ class MediaPipeProcessor(PoseModel):
 
         self.landmarker = self.PoseLandmarker.create_from_options(self.options)
 
-    def process_video(self, video_path: str) -> Optional[List[Dict[str, Any]]]:
+    def process_video(self, video_path: str, rois: Optional[List[ROI]]=None) -> Optional[List[Dict[str, Any]]]:
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             return None
@@ -61,7 +62,12 @@ class MediaPipeProcessor(PoseModel):
 
             timestamp_ms = (frame_index / fps) * 1000.0
 
-            data = self.process_frame(frame, timestamp_ms)
+            if rois is not None:
+                roi = rois[frame_index]
+            else:
+                roi = None
+
+            data = self.process_frame(frame, timestamp_ms, roi)
 
             full_run_data.append(data)
 
@@ -73,12 +79,31 @@ class MediaPipeProcessor(PoseModel):
 
         return full_run_data
 
-    def process_frame(
-        self, frame: np.ndarray, timestamp_ms: float
+    def process_frame(self, frame: np.ndarray, timestamp_ms: float, roi: Optional[ROI]=None) -> Optional[Dict[str, Any]]:
+        input_frame = frame
+        offset_x, offset_y = 0, 0
+
+        if roi:
+            x, y, w, h = roi
+            input_frame = frame[y:y + h, x:x + w]
+            offset_x, offset_y = x, y
+
+        results = self.process(frame=input_frame, timestamp_ms=timestamp_ms)
+
+        if results is None:
+            return {}
+
+        for name in self.KEYPOINT_MAP.values():
+            if name in results:
+                px, py, vis = results[name]
+                results[name] = (px + offset_x, py + offset_y, vis)
+
+        return results
+
+    def process(
+        self, frame: np.ndarray, timestamp_ms: float,
     ) -> Optional[Dict[str, Any]]:
-        """
-        Processes a frame using MediaPipe and returns standardized pixel coordinates.
-        """
+
         h, w, _ = frame.shape
 
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
