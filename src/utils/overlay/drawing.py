@@ -1,22 +1,12 @@
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 
 import cv2
 import numpy as np
 
 
 def draw_runner_skeleton(
-    frame: np.ndarray, data: Dict[str, Any], confidence_threshold: float = 0.5
+    frame: np.ndarray, data: Dict[str, Any], connections: List[Tuple[str, str]], confidence_threshold: float = 0.5,
 ) -> np.ndarray:
-    connections = [
-        ("left_shoulder", "left_hip"),
-        ("left_hip", "left_knee"),
-        ("left_knee", "left_ankle"),
-        ("right_shoulder", "right_hip"),
-        ("right_hip", "right_knee"),
-        ("right_knee", "right_ankle"),
-        ("left_shoulder", "right_shoulder"),
-        ("left_hip", "right_hip"),
-    ]
 
     for start_name, end_name in connections:
         if start_name in data and end_name in data:

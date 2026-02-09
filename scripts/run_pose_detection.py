@@ -3,7 +3,7 @@ import argparse
 import json
 import logging
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 from src.processors.base import PoseModel
 from src.processors.yolo import YoloProcessor
@@ -16,26 +16,27 @@ from src.utils.detection.filtering import filter_main_runner
 logger = logging.getLogger(__name__)
 
 
-def save_pose_data(data_list: List[Dict], output_path: str):
+def save_pose_data(data_list: List[Dict], skeleton_connections: List[Tuple[str, str]], output_path: str):
     def convert(o):
         if isinstance(o, np.ndarray):
             return o.tolist()
         if isinstance(o, np.generic):
             return o.item()
         raise TypeError(f"Object of type {type(o)} is not JSON serializable")
-
+    data = {'connections': skeleton_connections, 'pose_data': data_list}
     with open(output_path, "w") as f:
-        json.dump(data_list, f, default=convert, indent=4)
+        json.dump(data, f, default=convert, indent=4)
 
 
 def process_video(video_file: str, output_json_path: str, processor: PoseModel):
     full_run_data = processor.process_video(video_file)
+    skeleton_connections = processor.connections
     if isinstance(processor, YoloProcessor):
         full_run_data = filter_main_runner(
             full_run_data
         )  # TODO all None value handling
 
-    save_pose_data(full_run_data, output_json_path)
+    save_pose_data(full_run_data, skeleton_connections, output_json_path)
 
 
 def main():

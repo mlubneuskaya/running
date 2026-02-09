@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 def create_overlay_video(video_path: str, json_path: str, output_path: str):
     try:
         with open(json_path, "r") as f:
-            pose_data = json.load(f)
+            data = json.load(f)
+            pose_data = data['pose_data']
+            skeleton_connections = data['connections']
     except FileNotFoundError:
         logger.error(f"JSON file not found at {json_path}")
         return
@@ -41,7 +43,7 @@ def create_overlay_video(video_path: str, json_path: str, output_path: str):
 
             if frame_data is not None:
                 try:
-                    draw_runner_skeleton(frame, frame_data)
+                    draw_runner_skeleton(frame, frame_data, skeleton_connections)
                 except Exception as e:
                     logger.warning(f"Error drawing frame {frame_index}: {e}")
         frame_index += 1

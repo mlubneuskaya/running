@@ -4,6 +4,18 @@ import numpy as np
 
 
 class PoseModel(ABC):
+
+    connections = [
+        ("left_shoulder", "left_hip"),
+        ("left_hip", "left_knee"),
+        ("left_knee", "left_ankle"),
+        ("right_shoulder", "right_hip"),
+        ("right_hip", "right_knee"),
+        ("right_knee", "right_ankle"),
+        ("left_shoulder", "right_shoulder"),
+        ("left_hip", "right_hip"),
+    ]
+
     def __init__(self, model_path: str):
         self.model_path = model_path
 
