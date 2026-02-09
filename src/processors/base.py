@@ -4,7 +4,6 @@ import numpy as np
 
 
 class PoseModel(ABC):
-
     connections = [
         ("left_shoulder", "left_hip"),
         ("left_hip", "left_knee"),

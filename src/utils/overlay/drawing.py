@@ -5,9 +5,11 @@ import numpy as np
 
 
 def draw_runner_skeleton(
-    frame: np.ndarray, data: Dict[str, Any], connections: List[Tuple[str, str]], confidence_threshold: float = 0.5,
+    frame: np.ndarray,
+    data: Dict[str, Any],
+    connections: List[Tuple[str, str]],
+    confidence_threshold: float = 0.5,
 ) -> np.ndarray:
-
     for start_name, end_name in connections:
         if start_name in data and end_name in data:
             start_pt = data[start_name]

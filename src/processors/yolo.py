@@ -47,7 +47,9 @@ class YoloProcessor(PoseModel):
 
         all_frames_data = []
 
-        for frame_idx, r in enumerate(results_generator):  #TODO frame postprocessing -> function
+        for frame_idx, r in enumerate(
+            results_generator
+        ):  # TODO frame postprocessing -> function
             frame_candidates = []
 
             timestamp_ms = (frame_idx / fps) * 1000.0

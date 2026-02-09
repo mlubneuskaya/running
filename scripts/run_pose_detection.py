@@ -16,14 +16,17 @@ from src.utils.detection.filtering import filter_main_runner
 logger = logging.getLogger(__name__)
 
 
-def save_pose_data(data_list: List[Dict], skeleton_connections: List[Tuple[str, str]], output_path: str):
+def save_pose_data(
+    data_list: List[Dict], skeleton_connections: List[Tuple[str, str]], output_path: str
+):
     def convert(o):
         if isinstance(o, np.ndarray):
             return o.tolist()
         if isinstance(o, np.generic):
             return o.item()
         raise TypeError(f"Object of type {type(o)} is not JSON serializable")
-    data = {'connections': skeleton_connections, 'pose_data': data_list}
+
+    data = {"connections": skeleton_connections, "pose_data": data_list}
     with open(output_path, "w") as f:
         json.dump(data, f, default=convert, indent=4)
 

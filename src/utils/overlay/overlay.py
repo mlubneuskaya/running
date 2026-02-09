@@ -12,8 +12,8 @@ def create_overlay_video(video_path: str, json_path: str, output_path: str):
     try:
         with open(json_path, "r") as f:
             data = json.load(f)
-            pose_data = data['pose_data']
-            skeleton_connections = data['connections']
+            pose_data = data["pose_data"]
+            skeleton_connections = data["connections"]
     except FileNotFoundError:
         logger.error(f"JSON file not found at {json_path}")
         return

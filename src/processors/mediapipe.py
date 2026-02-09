@@ -22,8 +22,12 @@ class MediaPipeProcessor(PoseModel):
         32: "right_foot_index",
     }
 
-    connections = PoseModel.connections + [("left_ankle", "left_heel"), ("left_heel", "left_foot_index"),
-        ("right_ankle", "right_heel"), ("right_heel", "right_foot_index")]
+    connections = PoseModel.connections + [
+        ("left_ankle", "left_heel"),
+        ("left_heel", "left_foot_index"),
+        ("right_ankle", "right_heel"),
+        ("right_heel", "right_foot_index"),
+    ]
 
     def __init__(self, model_path: str):
         super().__init__(model_path)
