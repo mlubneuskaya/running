@@ -157,3 +157,28 @@ class YoloProcessor(PoseModel):
             self.model.trackers = None
         except AttributeError:
             pass
+
+
+class YOLOProcessorFeet(YoloProcessor):
+    KEYPOINT_MAP = {
+        **YoloProcessor.KEYPOINT_MAP,
+        17: "left_big_toe",
+        18: "left_small_toe",
+        19: "left_heel",
+        20: "right_big_toe",
+        21: "right_small_toe",
+        22: "right_heel",
+    }
+
+    connections = YoloProcessor.connections + [
+        ("left_ankle", "left_big_toe"),
+        ("left_ankle", "left_small_toe"),
+        ("left_heel", "left_big_toe"),
+        ("left_heel", "left_small_toe"),
+        ("left_big_toe", "left_small_toe"),
+        ("right_ankle", "right_big_toe"),
+        ("right_ankle", "right_small_toe"),
+        ("right_heel", "right_big_toe"),
+        ("right_heel", "right_small_toe"),
+        ("right_big_toe", "right_small_toe"),
+    ]

@@ -6,7 +6,7 @@ import numpy as np
 from typing import List, Dict, Tuple
 
 from src.processors.base import PoseModel
-from src.processors.yolo import YoloProcessor
+from src.processors.yolo import YoloProcessor, YOLOProcessorFeet
 from src.processors.mediapipe import MediaPipeProcessor
 from src.utils.file_discovery import get_video_files
 from src.utils.get_path import get_mirror_path
@@ -67,6 +67,11 @@ def main():
     if model_type == "yolo":
         logger.info(f"Initializing YOLO ({cfg['model']['device']})...")
         processor_class = lambda path: YoloProcessor(
+            model_path=path, device=cfg["model"]["device"]
+        )
+    elif model_type == "yolo_feet":
+        logger.info(f"Initializing YOLO with feet ({cfg['model']['device']})...")
+        processor_class = lambda path: YOLOProcessorFeet(
             model_path=path, device=cfg["model"]["device"]
         )
     elif model_type == "mediapipe":
