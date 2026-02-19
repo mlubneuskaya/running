@@ -15,17 +15,20 @@ def count_detection_gaps(df_coords, keypoints):
 
         for kp in keypoints:
             x_col = f"{kp}_x"
-            lost_counts[kp] = df_coords[x_col].loc[first_full_idx:last_full_idx].isna().sum()
+            lost_counts[kp] = (
+                df_coords[x_col].loc[first_full_idx:last_full_idx].isna().sum()
+            )
     else:
         for kp in keypoints:
             lost_counts[kp] = 0
         total_detected_frames = 0
 
-    df = pd.DataFrame.from_dict(lost_counts, orient='index', columns=['gap_count']).reset_index()
-    df = df.rename(columns={'index': 'keypoint'})
-    df['total_detected_frames'] = total_detected_frames
+    df = pd.DataFrame.from_dict(
+        lost_counts, orient="index", columns=["gap_count"]
+    ).reset_index()
+    df = df.rename(columns={"index": "keypoint"})
+    df["total_detected_frames"] = total_detected_frames
     return df
-
 
 
 def aggregate_gaps_across_videos(video_dfs, model_name="Model_A"):

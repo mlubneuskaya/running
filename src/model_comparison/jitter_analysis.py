@@ -70,13 +70,17 @@ def calculate_jitter_metrics(df_coords, keypoints, fps, scale_factor):
         acceleration = get_trimmed_series(acceleration)
         acceleration = acceleration.interpolate(method="linear")
 
-        jitter_95th_val = np.nanpercentile(acceleration, 95) if len(acceleration) > 0 else 0
+        jitter_95th_val = (
+            np.nanpercentile(acceleration, 95) if len(acceleration) > 0 else 0
+        )
 
-        jitter_results.append({
-            "keypoint": kp,
-            "jitter_95th_magnitude": jitter_95th_val,
-            "jitter_outlier_percentage": get_outlier_percentage(acceleration),
-        })
+        jitter_results.append(
+            {
+                "keypoint": kp,
+                "jitter_95th_magnitude": jitter_95th_val,
+                "jitter_outlier_percentage": get_outlier_percentage(acceleration),
+            }
+        )
 
     return pd.DataFrame(jitter_results)
 

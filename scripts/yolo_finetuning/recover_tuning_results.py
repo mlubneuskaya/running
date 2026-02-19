@@ -1,6 +1,5 @@
 import os
 
-import pandas as pd
 import plotly.express as px
 from ray.tune import ExperimentAnalysis
 
@@ -17,7 +16,7 @@ except Exception as e:
     print(f"Failed to parse directory: {e}")
     exit()
 
-target_metric = "metrics/mAP50-95(P)" 
+target_metric = "metrics/mAP50-95(P)"
 
 if target_metric in df.columns:
     df = df.dropna(subset=[target_metric])
@@ -29,23 +28,29 @@ for key, value in best_trial.config.items():
 print(f"Winning Score ({target_metric}): {best_trial.last_result.get(target_metric)}")
 
 fig_parallel = px.parallel_coordinates(
-    df, 
+    df,
     color=target_metric,
-    dimensions=['config/lr0', 'config/lrf', 'config/momentum', 'config/pose', 'config/weight_decay'],
+    dimensions=[
+        "config/lr0",
+        "config/lrf",
+        "config/momentum",
+        "config/pose",
+        "config/weight_decay",
+    ],
     color_continuous_scale=px.colors.diverging.Tealrose,
-    title="YOLO26l Pose - Hyperparameter Tuning Routes"
+    title="YOLO26l Pose - Hyperparameter Tuning Routes",
 )
 fig_parallel.write_html("recovered_parallel_plot.html")
 
 
 fig_scatter = px.scatter(
     df,
-    x="config/lr0", 
+    x="config/lr0",
     y=target_metric,
     color="config/pose",
     size="config/momentum",
-    hover_data=['config/weight_decay', 'config/lrf', 'config/freeze'],
-    title="Learning Rate vs Accuracy (Colored by Pose Weight)"
+    hover_data=["config/weight_decay", "config/lrf", "config/freeze"],
+    title="Learning Rate vs Accuracy (Colored by Pose Weight)",
 )
 fig_scatter.write_html("recovered_scatter_plot.html")
 

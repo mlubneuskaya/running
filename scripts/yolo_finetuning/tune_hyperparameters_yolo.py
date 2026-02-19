@@ -7,7 +7,9 @@ import os
 from ultralytics import YOLO, settings
 from ray import tune
 
-settings.update({"datasets_dir": "/net/pr2/projects/plgrid/plggrecontext/maria/running/"})
+settings.update(
+    {"datasets_dir": "/net/pr2/projects/plgrid/plggrecontext/maria/running/"}
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,13 +41,11 @@ def main():
     if "data" in train_args:
         train_args["data"] = os.path.abspath(train_args["data"])
 
-    model = YOLO(model_path) # TODO: replace with download_model
+    model = YOLO(model_path)  # TODO: replace with download_model
 
     logger.info("Starting Ray Tune with 4 parallel trials...")
 
-    results = model.tune(
-        space=space, **tune_args, **train_args
-    )
+    results = model.tune(space=space, **tune_args, **train_args)
 
 
 if __name__ == "__main__":

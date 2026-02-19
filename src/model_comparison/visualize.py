@@ -18,10 +18,11 @@ def plot_jitter_analysis(df_jitter, ax, hue=None, model_name=""):
     if hue and hue in df_jitter.columns:
         group_cols.append(hue)
 
-    df_agg = df_jitter.groupby(group_cols).agg({
-        "jitter_outlier_percentage": "mean",
-        "jitter_95th_magnitude": "mean"
-    }).reset_index()
+    df_agg = (
+        df_jitter.groupby(group_cols)
+        .agg({"jitter_outlier_percentage": "mean", "jitter_95th_magnitude": "mean"})
+        .reset_index()
+    )
 
     df_agg = df_agg.sort_values("jitter_outlier_percentage", ascending=False)
 
@@ -35,11 +36,15 @@ def plot_jitter_analysis(df_jitter, ax, hue=None, model_name=""):
     ax.set_xlim(0, 17)
 
     if hue:
-        mag_map = {(row['keypoint'], str(row[hue])): row['jitter_95th_magnitude']
-                   for _, row in df_agg.iterrows()}
+        mag_map = {
+            (row["keypoint"], str(row[hue])): row["jitter_95th_magnitude"]
+            for _, row in df_agg.iterrows()
+        }
     else:
-        mag_map = {row['keypoint']: row['jitter_95th_magnitude']
-                   for _, row in df_agg.iterrows()}
+        mag_map = {
+            row["keypoint"]: row["jitter_95th_magnitude"]
+            for _, row in df_agg.iterrows()
+        }
 
     hue_labels = [l.get_text() for l in ax.get_legend().get_texts()] if hue else [None]
 
@@ -62,11 +67,11 @@ def plot_jitter_analysis(df_jitter, ax, hue=None, model_name=""):
                 text_x,
                 bar.get_y() + bar.get_height() / 2,
                 f"M:{mag:.1f}",
-                va='center',
-                ha='left' if width < 0.5 else 'right',
+                va="center",
+                ha="left" if width < 0.5 else "right",
                 fontsize=8,
-                fontweight='bold',
-                color=text_color
+                fontweight="bold",
+                color=text_color,
             )
 
     ax.set_title(f"Jitter Frequency & Magnitude {model_name}")
