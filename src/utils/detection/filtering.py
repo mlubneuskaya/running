@@ -34,7 +34,7 @@ def filter_main_runner(
             movement_data[tid].append(ankle_distance / box_h)
 
     if not movement_data:
-        return [None] * len(all_frames_data)
+        return [{}] * len(all_frames_data)
 
     best_track_id = -1
     max_variance = -1.0
@@ -53,7 +53,7 @@ def filter_main_runner(
         best_track_id = max(movement_data, key=lambda k: len(movement_data[k]))
 
     clean_timeline = [
-        next((p for p in frame if p.get("track_id") == best_track_id), None)
+        next((p for p in frame if p.get("track_id") == best_track_id), {})
         for frame in all_frames_data
     ]
 
