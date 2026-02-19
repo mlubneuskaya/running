@@ -13,3 +13,7 @@ wget -c -N http://images.cocodataset.org/zips/val2017.zip
 echo "Unzipping..."
 unzip -q -n train2017.zip
 unzip -q -n val2017.zip
+
+cd ./data/coco-wholebody/annotations
+gdown --id 1thErEToRbmM9uLNi1JXXfOsaS5VK2FXf
+gdown --id 1N6VgwKnj8DeyGXCvp1eYgNbRmw6jdfrb

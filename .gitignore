@@ -28,12 +28,16 @@ wheels/
 env/
 .env/
 .venv/
+/venv/
 ENV/
 env.bak/
 venv.bak/
 
 data/
 configs/
+jobs/
+output/
+runs/
 
 models/*
 *.pt
