@@ -14,7 +14,7 @@ def calculate_link_metrics(df_coords, links):
 
     scale_factor = pd.concat([torso_l, torso_r]).median()
 
-    if pd.isna(scale_factor) or scale_factor == 0:
+    if pd.isna(scale_factor) or scale_factor is not None == 0:
         scale_factor = 1.0
 
     link_results = []

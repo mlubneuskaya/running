@@ -11,6 +11,7 @@ def count_detection_gaps(df_coords, keypoints):
     if is_row_complete.sum() >= 2:
         first_full_idx = is_row_complete.idxmax()
         last_full_idx = is_row_complete[::-1].idxmax()
+        total_detected_frames = last_full_idx - first_full_idx
 
         for kp in keypoints:
             x_col = f"{kp}_x"
@@ -18,9 +19,11 @@ def count_detection_gaps(df_coords, keypoints):
     else:
         for kp in keypoints:
             lost_counts[kp] = 0
+        total_detected_frames = 0
 
     df = pd.DataFrame.from_dict(lost_counts, orient='index', columns=['gap_count']).reset_index()
-    df = df.rename(columns={'index': 'Keypoint'})
+    df = df.rename(columns={'index': 'keypoint'})
+    df['total_detected_frames'] = total_detected_frames
     return df
 
 
