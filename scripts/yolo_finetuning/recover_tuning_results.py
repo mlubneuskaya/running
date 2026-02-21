@@ -17,15 +17,12 @@ except Exception as e:
     exit()
 
 target_metric = "metrics/mAP50-95(P)"
+df.sort_values(by=[target_metric]).to_csv(f"{relative_path}/summary.csv")
 
-if target_metric in df.columns:
-    df = df.dropna(subset=[target_metric])
+df = df.dropna(subset=[target_metric])
+df = df[df["epoch"] == df.epoch.max()]
 
 best_trial = analysis.get_best_trial(metric=target_metric, mode="max")
-print(" --- BEST HYPERPARAMETERS --- ")
-for key, value in best_trial.config.items():
-    print(f"{key}: {value}")
-print(f"Winning Score ({target_metric}): {best_trial.last_result.get(target_metric)}")
 
 fig_parallel = px.parallel_coordinates(
     df,
@@ -40,7 +37,7 @@ fig_parallel = px.parallel_coordinates(
     color_continuous_scale=px.colors.diverging.Tealrose,
     title="YOLO26l Pose - Hyperparameter Tuning Routes",
 )
-fig_parallel.write_html("recovered_parallel_plot.html")
+fig_parallel.write_html(f"{relative_path}/recovered_parallel_plot.html")
 
 
 fig_scatter = px.scatter(
@@ -49,9 +46,13 @@ fig_scatter = px.scatter(
     y=target_metric,
     color="config/pose",
     size="config/momentum",
-    hover_data=["config/weight_decay", "config/lrf", "config/freeze"],
+    hover_data=[
+        "config/weight_decay",
+        "config/lrf",
+        "config/freeze",
+        "config/pose",
+        "config/lr0",
+    ],
     title="Learning Rate vs Accuracy (Colored by Pose Weight)",
 )
-fig_scatter.write_html("recovered_scatter_plot.html")
-
-print("\nSaved 'recovered_parallel_plot.html' and 'recovered_scatter_plot.html'!")
+fig_scatter.write_html(f"{relative_path}/recovered_scatter_plot.html")
