@@ -21,12 +21,31 @@ logger = logging.getLogger(__name__)
 
 def init_csv_file(path):
     headers = [
-        "epoch", "time", "train/box_loss", "train/pose_loss",
-        "train/kobj_loss", "train/cls_loss", "train/dfl_loss", "train/rle_loss",
-        "metrics/precision(B)", "metrics/recall(B)", "metrics/mAP50(B)", "metrics/mAP50-95(B)",
-        "metrics/precision(P)", "metrics/recall(P)", "metrics/mAP50(P)", "metrics/mAP50-95(P)",
-        "val/box_loss", "val/pose_loss", "val/kobj_loss", "val/cls_loss",
-        "val/dfl_loss", "val/rle_loss", "lr/pg0", "lr/pg1", "lr/pg2",
+        "epoch",
+        "time",
+        "train/box_loss",
+        "train/pose_loss",
+        "train/kobj_loss",
+        "train/cls_loss",
+        "train/dfl_loss",
+        "train/rle_loss",
+        "metrics/precision(B)",
+        "metrics/recall(B)",
+        "metrics/mAP50(B)",
+        "metrics/mAP50-95(B)",
+        "metrics/precision(P)",
+        "metrics/recall(P)",
+        "metrics/mAP50(P)",
+        "metrics/mAP50-95(P)",
+        "val/box_loss",
+        "val/pose_loss",
+        "val/kobj_loss",
+        "val/cls_loss",
+        "val/dfl_loss",
+        "val/rle_loss",
+        "lr/pg0",
+        "lr/pg1",
+        "lr/pg2",
     ]
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -37,7 +56,9 @@ def init_csv_file(path):
             writer.writerow(headers)
         logger.info(f"Initialized metrics file at: {os.path.abspath(path)}")
     else:
-        logger.info(f"Found existing metrics file at: {os.path.abspath(path)}. Appending new data.")
+        logger.info(
+            f"Found existing metrics file at: {os.path.abspath(path)}. Appending new data."
+        )
 
 
 def log_metrics_to_csv(trainer, metrics_path):
@@ -89,7 +110,8 @@ def train_worker(model_path, train_args, metrics_path, is_resuming=False):
         model = YOLO(model_path)
 
         model.add_callback(
-            "on_fit_epoch_end", lambda trainer: log_metrics_to_csv(trainer, metrics_path)
+            "on_fit_epoch_end",
+            lambda trainer: log_metrics_to_csv(trainer, metrics_path),
         )
 
         logger.info(f"Launching training with args: {train_args}")
@@ -124,14 +146,18 @@ def get_top_ray_tune_configs(experiment_dir, metric, mode, top_n):
         return []
 
     df = df.dropna(subset=[metric])
-    ascending = (mode == "min")
+    ascending = mode == "min"
     top_df = df.sort_values(by=metric, ascending=ascending).head(top_n)
 
     configs = []
     for _, row in top_df.iterrows():
         # Extract hyperparameters (Ray Tune prefixes them with 'config/')
-        trial_config = {k.replace('config/', ''): v for k, v in row.items() if k.startswith('config/')}
-        trial_id = row.get('trial_id', 'unknown')
+        trial_config = {
+            k.replace("config/", ""): v
+            for k, v in row.items()
+            if k.startswith("config/")
+        }
+        trial_id = row.get("trial_id", "unknown")
         score = row.get(metric)
         configs.append((trial_id, trial_config, score))
 
@@ -140,13 +166,15 @@ def get_top_ray_tune_configs(experiment_dir, metric, mode, top_n):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="YOLO Training Script")
-    parser.add_argument("--config", type=str, required=True, help="Path to YAML config file")
+    parser.add_argument(
+        "--config", type=str, required=True, help="Path to YAML config file"
+    )
     return parser.parse_args()
 
 
 def main():
     # Force 'spawn' method for CUDA multiprocessing safety
-    mp.set_start_method('spawn', force=True)
+    mp.set_start_method("spawn", force=True)
 
     args = parse_args()
 
@@ -172,7 +200,9 @@ def main():
         model_path = resume_checkpoint
         is_resuming = True
     elif resume_checkpoint and not os.path.exists(resume_checkpoint):
-        logger.error(f"Config 'resume_path' is set but file does not exist: {resume_checkpoint}")
+        logger.error(
+            f"Config 'resume_path' is set but file does not exist: {resume_checkpoint}"
+        )
         return
     else:
         logger.info(f"Preparing base model {model_name}.")
@@ -221,7 +251,10 @@ def main():
             name, ext = os.path.splitext(metrics_path)
             run_metrics_path = f"{name}_{trial_id}{ext}"
 
-            p = mp.Process(target=train_worker, args=(model_path, run_args, run_metrics_path, False))
+            p = mp.Process(
+                target=train_worker,
+                args=(model_path, run_args, run_metrics_path, False),
+            )
             p.start()
             processes.append(p)
 
@@ -234,7 +267,11 @@ def main():
 
     else:
         logger.info("Standard single-run mode detected.")
-        train_args = training_config["resuming"] if is_resuming else training_config.get("training", {})
+        train_args = (
+            training_config["resuming"]
+            if is_resuming
+            else training_config.get("training", {})
+        )
         train_worker(model_path, train_args, metrics_path, is_resuming)
 
 
