@@ -38,12 +38,12 @@ configs/
 jobs/
 output/
 runs/
+notebooks_drafts/
 
 models/*
 *.pt
 
 .ipynb_checkpoints
-*.ipynb
 
 .idea/
 
