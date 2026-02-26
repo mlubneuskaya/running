@@ -20,7 +20,7 @@ def calculate_gct(smoothed_df: pd.DataFrame, fps: float, side: str = "left"):
 
     landings, _ = find_peaks(heel_rel_x, distance=min_stride_frames, prominence=20)
     mid_swings, _ = find_peaks(
-        -toe_rel_x, distance=min_stride_frames, prominence=10, height=0
+        -1 * toe_rel_x, distance=min_stride_frames, prominence=10, height=0
     )
 
     gct_records = []
@@ -41,14 +41,13 @@ def calculate_gct(smoothed_df: pd.DataFrame, fps: float, side: str = "left"):
 
                 gct_ms = timestamps[true_liftoff_idx] - timestamps[land_idx]
 
-                if 50 < gct_ms < 600:
-                    gct_records.append(
-                        {
-                            "landing_time": timestamps[land_idx],
-                            "liftoff_time": timestamps[true_liftoff_idx],
-                            "gct_ms": gct_ms,
-                        }
-                    )
+                gct_records.append(
+                    {
+                        "landing_time": timestamps[land_idx],
+                        "liftoff_time": timestamps[true_liftoff_idx],
+                        "gct_ms": gct_ms,
+                    }
+                )
 
     return pd.DataFrame(gct_records)
 

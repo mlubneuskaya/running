@@ -20,12 +20,7 @@ def _create_step_timeline(
     timeline["prev_foot"] = timeline["landing_foot"].shift(1)
     timeline["prev_time"] = timeline["landing_time"].shift(1)
 
-    valid_steps = (
-        timeline[timeline["landing_foot"] != timeline["prev_foot"]]
-        .dropna(subset=["prev_foot"])
-        .copy()
-    )
-    return valid_steps
+    return timeline
 
 
 def calculate_cadence(df: pd.DataFrame) -> pd.DataFrame:
@@ -38,30 +33,26 @@ def calculate_cadence(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def calculate_step_length(
-    df: pd.DataFrame, pose_df: pd.DataFrame, runner_height_m: float
+        df: pd.DataFrame, pose_df: pd.DataFrame, runner_height_m: float
 ) -> pd.DataFrame:
     merged = pd.merge(
         df, pose_df, left_on="landing_time", right_on="timestamp_ms", how="inner"
     )
 
-    lead_heel_x = np.where(
-        merged["landing_foot"] == "left", merged["left_heel_x"], merged["right_heel_x"]
-    )
-    trail_toe_x = np.where(
-        merged["landing_foot"] == "left",
-        merged["right_big_toe_x"],
-        merged["left_big_toe_x"],
-    )
+    heel_step_length_px = np.abs(merged["left_heel_x"] - merged["right_heel_x"])
 
-    step_length_px = np.abs(lead_heel_x - trail_toe_x)
+    toe_step_length_px = np.abs(merged["left_big_toe_x"] - merged["right_big_toe_x"])
 
     running_posture_factor = 1  # 0.88
     effective_bbox_height_m = runner_height_m * running_posture_factor
 
     px_to_m_ratio = effective_bbox_height_m / merged["bbox_h"]
 
-    merged["step_length_px"] = step_length_px
-    merged["step_length_m"] = step_length_px * px_to_m_ratio
+    merged["step_length_heel_px"] = heel_step_length_px
+    merged["step_length_toe_px"] = toe_step_length_px
+
+    merged["step_length_heel_m"] = heel_step_length_px * px_to_m_ratio
+    merged["step_length_toe_m"] = toe_step_length_px * px_to_m_ratio
 
     return merged
 
@@ -71,7 +62,7 @@ def calculate_speed(df: pd.DataFrame) -> pd.DataFrame:
     step_time_s = df["step_time_ms"] / 1000.0
 
     df["speed_m_s"] = np.where(
-        step_time_s > 0, df["step_length_m"] / step_time_s, np.nan
+        step_time_s > 0, df["step_length_heel_m"] / step_time_s, np.nan
     )
 
     df["speed_km_h"] = df["speed_m_s"] * 3.6
@@ -101,8 +92,10 @@ def calculate_step_metrics(
         "landing_foot",
         "step_time_ms",
         "cadence_spm",
-        "step_length_m",
-        "step_length_px",
+        "step_length_heel_px",
+        "step_length_toe_px",
+        "step_length_heel_m",
+        "step_length_toe_m",
         "speed_m_s",
         "speed_km_h",
         "pace_min_km",
