@@ -28,6 +28,10 @@ def draw_runner_skeleton(
         if isinstance(val, (list, tuple)) and len(val) == 3:
             x, y, conf = val
             if conf > confidence_threshold:
-                cv2.circle(frame, (int(x), int(y)), 5, (0, 0, 255), -1)
+                if "left" in name:
+                    color = (255, 0, 0)
+                else:
+                    color = (0, 0, 255)
+                cv2.circle(frame, (int(x), int(y)), 5, color, -1)
 
     return frame
