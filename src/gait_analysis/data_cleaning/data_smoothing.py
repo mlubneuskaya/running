@@ -44,7 +44,9 @@ def acceleration(pose_data: pd.DataFrame, fps) -> pd.DataFrame:
         method="polynomial", order=2, limit_direction="both"
     )
 
-    accel_components = coords_df.apply(lambda x: np.gradient(np.gradient(x, 1/fps), 1/fps))
+    accel_components = coords_df.apply(
+        lambda x: np.gradient(np.gradient(x, 1 / fps), 1 / fps)
+    )
 
     keypoint_names = set(col.rsplit("_", 1)[0] for col in accel_components.columns)
 
