@@ -3,51 +3,67 @@ import pandas as pd
 from scipy.signal import find_peaks
 
 
-def calculate_gct(smoothed_df: pd.DataFrame, fps: float, side: str = "left"):
-    timestamps = smoothed_df["timestamp_ms"].values
+def get_resultant_accel(df, prefix, dt):
+    pos_x = df[f"{prefix}_x"].values
+    pos_y = df[f"{prefix}_y"].values
 
-    heel_x = smoothed_df[f"{side}_heel_x"].values
-    toe_x = smoothed_df[f"{side}_big_toe_x"].values
-    sacrum = smoothed_df[f"{side}_hip_x"].values
+    acc_x = np.gradient(np.gradient(pos_x, dt), dt)
+    acc_y = np.gradient(np.gradient(pos_y, dt), dt)
+    return np.sqrt(acc_x ** 2 + acc_y ** 2)
 
-    is_running_right = sacrum[-1] > sacrum[0]
-    direction = 1 if is_running_right else -1
 
-    heel_rel_x = (heel_x - sacrum) * direction
-    toe_rel_x = (toe_x - sacrum) * direction
+def get_vertical_velocity(df, prefix, dt):
+    pos_y = df[f"{prefix}_y"].values
+    return np.gradient(pos_y, dt)
 
-    min_stride_frames = int(fps * 0.5)
 
-    landings, _ = find_peaks(heel_rel_x, distance=min_stride_frames, prominence=20)
-    mid_swings, _ = find_peaks(
-        -1 * toe_rel_x, distance=min_stride_frames, prominence=10, height=0
-    )
+def detect_initial_contact(res_accel, start_idx, window_size):
+    search_win = res_accel[start_idx: start_idx + window_size]
+    if len(search_win) == 0:
+        return None
+    return start_idx + np.argmin(search_win)
+
+
+def detect_toe_off(toe_vel_y, ic_idx, fps):
+    to_start = ic_idx + int(fps * 0.1)
+    to_end = ic_idx + int(fps * 0.5)
+
+    window = toe_vel_y[to_start:to_end]
+    if len(window) == 0:
+        return None
+
+    neg_peaks, _ = find_peaks(-window, prominence=5)
+    return (to_start + neg_peaks[0]) if len(neg_peaks) > 0 else None
+
+
+def calculate_gct(df: pd.DataFrame, fps: float, side: str = "left"):
+    dt = 1 / fps
+    timestamps = df["timestamp_ms"].values
+
+    heel_accel = get_resultant_accel(df, f"{side}_heel", dt)
+    toe_vel_y = get_vertical_velocity(df, f"{side}_big_toe", dt)
+
+    hip_x = df[f"{side}_hip_x"].values
+    direction = 1 if hip_x[-1] > hip_x[0] else -1
+    heel_rel_x = (df[f"{side}_heel_x"].values - hip_x) * direction
+
+    candidate_landings, _ = find_peaks(heel_rel_x, distance=int(fps * 0.5), prominence=20)
 
     gct_records = []
+    for start_idx in candidate_landings:
+        ic_idx = detect_initial_contact(heel_accel, start_idx, int(fps * 0.1))
+        if ic_idx is None: continue
 
-    for land_idx in landings:
-        valid_swings = mid_swings[mid_swings > land_idx]
+        to_idx = detect_toe_off(toe_vel_y, ic_idx, fps)
+        if to_idx is None: continue
 
-        if len(valid_swings) > 0:
-            swing_idx = valid_swings[0]
-
-            window_toe = toe_rel_x[land_idx:swing_idx]
-
-            negative_frames = np.where(window_toe < 0)[0]
-
-            if len(negative_frames) > 0:
-                local_liftoff_idx = negative_frames[0]
-                true_liftoff_idx = land_idx + local_liftoff_idx
-
-                gct_ms = timestamps[true_liftoff_idx] - timestamps[land_idx]
-
-                gct_records.append(
-                    {
-                        "landing_time": timestamps[land_idx],
-                        "liftoff_time": timestamps[true_liftoff_idx],
-                        "gct_ms": gct_ms,
-                    }
-                )
+        gct_records.append({
+            "landing_time": timestamps[ic_idx],
+            "liftoff_time": timestamps[to_idx],
+            "gct_ms": timestamps[to_idx] - timestamps[ic_idx],
+            "ic_accel": heel_accel[ic_idx],
+            "to_vel_y": toe_vel_y[to_idx]
+        })
 
     return pd.DataFrame(gct_records)
 
