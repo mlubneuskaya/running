@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from scipy.signal import butter, filtfilt
 
+from src.gait_analysis.data_cleaning.left_right_filter import GaitSideFilter
+
 
 def get_valid_frames(pose_data: list[dict], keypoints: list) -> list[int]:
     valid_indices = []
@@ -95,6 +97,7 @@ def apply_butterworth(pose_df, fps, cutoff=6.0):
 def smooth_pose_data(
     pose_data: list[dict],
     keypoints: list[str],
+    anchors: list[str],
     keys_to_exclude: set[str],
     fps: float,
     cutoff: float,
@@ -111,7 +114,11 @@ def smooth_pose_data(
 
     pose_df = flatten_pose_data(pose_slice, keys_to_exclude=keys_to_exclude)
 
-    accel_df = acceleration(pose_df, fps=fps)
+    side_bases = [kp.split("right_")[-1].split("left_")[-1] for kp in keypoints]
+    gait_side_filter = GaitSideFilter(side_bases, anchors, sensitivity=2)
+    stable_pose_df = gait_side_filter.filter_data(pose_df)
+
+    accel_df = acceleration(stable_pose_df, fps=fps)
 
     cleaned_df = remove_outliers(accel_df, pose_df)
 

@@ -5,12 +5,13 @@ import matplotlib.pyplot as plt
 
 
 def visualize_gait_phase(
-    video_path: str,
-    landing_frame_idx: int,
-    landing_time: float,
-    window: int = 1,
-    figsize: Tuple[int, int] = (20, 5),
-    gait_phase: str = "LANDING",
+        video_path: str,
+        landing_frame_idx: int,
+        landing_time: float,
+        window: int = 1,
+        figsize: Tuple[int, int] = (20, 5),
+        gait_phase: str = "LANDING",
+        save: str = None,
 ):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -39,20 +40,25 @@ def visualize_gait_phase(
         plt.imshow(frame)
 
         current_idx = frame_indices[i]
-        if current_idx == landing_frame_idx:
-            title_color = "red"
-            title_text = (
-                f"Frame {current_idx} - {landing_time: .2f} ms\n(DETECTED {gait_phase})"
-            )
-            for spine in ax.spines.values():
-                spine.set_edgecolor("red")
-                spine.set_linewidth(3)
-        else:
-            title_color = "black"
-            title_text = f"Frame {current_idx}"
 
-        plt.title(title_text, color=title_color, fontsize=10)
+        if save is None:
+            if current_idx == landing_frame_idx:
+                title_color = "red"
+                title_text = f"Frame {current_idx} - {landing_time: .2f} ms\n(DETECTED {gait_phase})"
+                for spine in ax.spines.values():
+                    spine.set_edgecolor("red")
+                    spine.set_linewidth(3)
+            else:
+                title_color = "black"
+                title_text = ""#f"Frame {current_idx}"
+            plt.title(title_text, color=title_color, fontsize=10)
+
         plt.axis("off")
 
     plt.tight_layout()
+
+    if save:
+        plt.savefig(save, bbox_inches='tight', pad_inches=0.1, dpi=300)
+        print(f"Gait phase visualization saved to: {save}")
+
     plt.show()
