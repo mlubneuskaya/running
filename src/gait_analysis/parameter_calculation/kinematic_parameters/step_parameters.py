@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 
+from src.gait_analysis.parameter_calculation.utils.height import get_segmental_height_px
+
 
 def _create_step_timeline(
     left_gct: pd.DataFrame, right_gct: pd.DataFrame
@@ -33,28 +35,46 @@ def calculate_cadence(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def calculate_step_length(
-        df: pd.DataFrame, pose_df: pd.DataFrame, runner_height_m: float
+        timeline_df: pd.DataFrame, pose_df: pd.DataFrame, runner_height_m: float
 ) -> pd.DataFrame:
+    """
+    Calculates step length as the distance between the current landing foot
+    at contact and the previous landing foot's position at its contact time.
+    """
     merged = pd.merge(
-        df, pose_df, left_on="landing_time", right_on="timestamp_ms", how="inner"
+        timeline_df, pose_df, left_on="landing_time", right_on="timestamp_ms", how="inner"
     )
 
-    heel_step_length_px = np.abs(merged["left_heel_x"] - merged["right_heel_x"])
+    merged = pd.merge(
+        merged, pose_df, left_on="prev_time", right_on="timestamp_ms",
+        how="left", suffixes=('', '_prev')
+    )
 
-    toe_step_length_px = np.abs(merged["left_big_toe_x"] - merged["right_big_toe_x"])
+    height_in_pixels = get_segmental_height_px(merged, head_neck_factor=1.16)
+    height_in_pixels = merged['bbox_h'] * 1.2
+    px_to_m_ratio = runner_height_m / height_in_pixels
 
-    running_posture_factor = 1  # 0.88
-    effective_bbox_height_m = runner_height_m * running_posture_factor
+    def get_step_dist(row, marker='heel'):
+        curr_foot = row['landing_foot']  # 'left' or 'right'
+        prev_foot = row['prev_foot']  # 'right' or 'left'
 
-    px_to_m_ratio = effective_bbox_height_m / merged["bbox_h"]
+        if pd.isna(prev_foot): return np.nan
 
-    merged["step_length_heel_px"] = heel_step_length_px
-    merged["step_length_toe_px"] = toe_step_length_px
+        curr_x = row[f'{curr_foot}_{marker}_x']
+        curr_y = row[f'{curr_foot}_{marker}_y']
+        prev_x = row[f'{prev_foot}_{marker}_x_prev']
+        prev_y = row[f'{prev_foot}_{marker}_y_prev']
 
-    merged["step_length_heel_m"] = heel_step_length_px * px_to_m_ratio
-    merged["step_length_toe_m"] = toe_step_length_px * px_to_m_ratio
+        return np.sqrt((curr_x - prev_x) ** 2 + (curr_y - prev_y) ** 2)
 
-    return merged
+    merged["step_length_heel_px"] = merged.apply(lambda r: get_step_dist(r, 'heel'), axis=1)
+    merged["step_length_toe_px"] = merged.apply(lambda r: get_step_dist(r, 'big_toe'), axis=1)
+
+    merged["step_length_heel_m"] = merged["step_length_heel_px"] * px_to_m_ratio
+    merged["step_length_toe_m"] = merged["step_length_toe_px"] * px_to_m_ratio
+
+    cols_to_keep = [c for c in merged.columns if not c.endswith('_prev')]
+    return merged[cols_to_keep]
 
 
 def calculate_speed(df: pd.DataFrame) -> pd.DataFrame:
@@ -64,14 +84,19 @@ def calculate_speed(df: pd.DataFrame) -> pd.DataFrame:
     df["speed_m_s"] = np.where(
         step_time_s > 0, df["step_length_heel_m"] / step_time_s, np.nan
     )
-
     df["speed_km_h"] = df["speed_m_s"] * 3.6
-
     df["pace_min_km"] = np.where(
         df["speed_m_s"] > 0, 1000.0 / (df["speed_m_s"] * 60.0), np.nan
     )
-    return df
+    df["speed_px_s"] = np.where(
+        step_time_s > 0, df["step_length_heel_px"] / step_time_s, np.nan
+    )
 
+    df["pace_s_100px"] = np.where(
+        df["speed_px_s"] > 0, 100.0 / df["speed_px_s"], np.nan
+    )
+
+    return df
 
 def calculate_step_metrics(
     left_gct: pd.DataFrame,
@@ -99,6 +124,8 @@ def calculate_step_metrics(
         "speed_m_s",
         "speed_km_h",
         "pace_min_km",
+        "speed_px_s",
+        "pace_s_100px",
     ]
 
     return final_df[columns_to_keep]
