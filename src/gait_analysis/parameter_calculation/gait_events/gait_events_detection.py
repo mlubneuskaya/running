@@ -62,9 +62,8 @@ def enforce_alternating(landing_times: np.ndarray, liftoff_times: np.ndarray) ->
     """Filter landing and liftoff timestamps so they strictly alternate.
 
     Merges both sets of events, sorts them by time, then greedily accepts
-    the first event of each expected type (landing → liftoff → landing → …).
-    Any event of the wrong type is skipped.  The sequence always starts with
-    a landing.
+    the first event of each expected type.  The sequence starts with whichever
+    event type appears first chronologically.
 
     Parameters
     ----------
@@ -81,9 +80,12 @@ def enforce_alternating(landing_times: np.ndarray, liftoff_times: np.ndarray) ->
         [(t, "liftoff") for t in liftoff_times]
     )
 
+    if not all_events:
+        return np.array([]), np.array([])
+
     result_landings: list[float] = []
     result_liftoffs: list[float] = []
-    expected = "landing"
+    expected = all_events[0][1]
 
     for t, kind in all_events:
         if kind == expected:
