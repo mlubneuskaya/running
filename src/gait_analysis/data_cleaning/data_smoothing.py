@@ -84,12 +84,14 @@ def apply_butterworth(pose_df, fps, cutoff=6.0):
     nyquist = 0.5 * fps
     normal_cutoff = cutoff / nyquist
     b, a = butter(N=4, Wn=normal_cutoff, btype="low", analog=False)
+    padlen = 3 * max(len(a), len(b)) - 1
 
     refined_df = pose_df.copy()
     coord_cols = refined_df.filter(regex=r"_[xy]$").columns
 
     for col in coord_cols:
-        refined_df[col] = filtfilt(b, a, refined_df[col])
+        if len(refined_df[col]) > padlen:
+            refined_df[col] = filtfilt(b, a, refined_df[col])
 
     return refined_df
 
@@ -115,7 +117,10 @@ def smooth_pose_data(
     pose_df = flatten_pose_data(pose_slice, keys_to_exclude=keys_to_exclude)
 
     side_bases = [kp.split("right_")[-1].split("left_")[-1] for kp in keypoints]
-    gait_side_filter = GaitSideFilter(side_bases, anchors, sensitivity=2)
+    anchor_bases = list(dict.fromkeys(
+        a.split("right_")[-1].split("left_")[-1] for a in anchors
+    ))
+    gait_side_filter = GaitSideFilter(side_bases, anchor_bases, sensitivity=2)
     stable_pose_df = gait_side_filter.filter_data(pose_df)
 
     accel_df = acceleration(stable_pose_df, fps=fps)

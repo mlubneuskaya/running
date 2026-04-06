@@ -15,7 +15,7 @@ def annotate_video_ui(video_path: str, fps: int) -> list[dict] | None:
         return None
 
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    WIN = "Annotate  —  T=touchdown  O=takeoff  Z=undo  ENTER=save  Q=skip"
+    WIN = "Annotate  —  T=touchdown  O=takeoff  Z=undo  ENTER=save  Q=skip  (side: L/R after each event)"
     cv2.namedWindow(WIN, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(WIN, 1280, 720)
     cv2.createTrackbar("Frame", WIN, 0, total_frames - 1, lambda _: None)
@@ -28,7 +28,7 @@ def annotate_video_ui(video_path: str, fps: int) -> list[dict] | None:
         "takeoff": (0, 80, 255),  # red
     }
 
-    def draw_hud(frame: np.ndarray, frame_idx: int) -> np.ndarray:
+    def draw_hud(frame: np.ndarray, frame_idx: int, prompt: str = "") -> np.ndarray:
         h, w = frame.shape[:2]
         overlay = frame.copy()
 
@@ -47,7 +47,7 @@ def annotate_video_ui(video_path: str, fps: int) -> list[dict] | None:
         cv2.putText(
             overlay,
             "A/D: step   SPACE: play   T: touchdown   O: takeoff   "
-            "Z: undo   ENTER: save   Q: skip",
+            "Z: undo   ENTER: save   Q: skip   (L/R = side after each event)",
             (12, 65),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.55,
@@ -57,7 +57,8 @@ def annotate_video_ui(video_path: str, fps: int) -> list[dict] | None:
 
         n_td = sum(1 for m in marks if m["event"] == "touchdown")
         n_to = sum(1 for m in marks if m["event"] == "takeoff")
-        last = f"   last: {marks[-1]['event']} f{marks[-1]['frame']}" if marks else ""
+        last_side = f" ({marks[-1].get('side', '?')})" if marks else ""
+        last = f"   last: {marks[-1]['event']}{last_side} f{marks[-1]['frame']}" if marks else ""
         cv2.putText(
             overlay,
             f"marks:  {n_td} touchdown   {n_to} takeoff{last}",
@@ -67,6 +68,18 @@ def annotate_video_ui(video_path: str, fps: int) -> list[dict] | None:
             (220, 220, 100),
             1,
         )
+
+        if prompt:
+            cv2.putText(
+                overlay,
+                prompt,
+                (12, h // 2),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1.2,
+                (0, 220, 255),
+                3,
+                cv2.LINE_AA,
+            )
 
         cv2.line(overlay, (0, h - 8), (w, h - 8), (60, 60, 60), 6)
         scrub_x = int(frame_idx / max(total_frames - 1, 1) * (w - 1))
@@ -91,6 +104,26 @@ def annotate_video_ui(video_path: str, fps: int) -> list[dict] | None:
         return overlay
 
     result = None
+    current_side: str | None = None  # tracks the side for automatic assignment
+
+    def _ask_side() -> str | None:
+        """Freeze the display and wait for L / R keypress. Returns side or None."""
+        cap.set(cv2.CAP_PROP_POS_FRAMES, cv2.getTrackbarPos("Frame", WIN))
+        _, pf = cap.read()
+        cv2.imshow(WIN, draw_hud(frame if pf is None else pf,
+                                 cv2.getTrackbarPos("Frame", WIN),
+                                 prompt="Side?  L = left   R = right   ESC = cancel"))
+        while True:
+            sk = cv2.waitKey(0) & 0xFF
+            if sk == ord("l"):
+                return "left"
+            elif sk == ord("r"):
+                return "right"
+            elif sk == 27:
+                return None
+
+    def _flip(side: str) -> str:
+        return "right" if side == "left" else "left"
 
     while True:
         frame_idx = cv2.getTrackbarPos("Frame", WIN)
@@ -116,26 +149,39 @@ def annotate_video_ui(video_path: str, fps: int) -> list[dict] | None:
             paused = True
             cv2.setTrackbarPos("Frame", WIN, max(frame_idx - 1, 0))
         elif key == ord("t"):
-            marks.append(
-                {
-                    "event": "touchdown",
-                    "frame": frame_idx,
-                    "time_sec": round(frame_idx / fps, 3),
-                }
-            )
-            print(f"  → touchdown  frame {frame_idx}  ({frame_idx / fps:.3f}s)")
+            # Each touchdown starts a new contact bout → flip side.
+            # Ask only if this is the very first event.
+            if current_side is None:
+                side = _ask_side()
+                if side is None:
+                    continue  # ESC: discard
+                current_side = side
+            else:
+                current_side = _flip(current_side)
+            marks.append({"event": "touchdown", "frame": frame_idx,
+                           "time_sec": round(frame_idx / fps, 3), "side": current_side})
+            print(f"  → touchdown ({current_side})  frame {frame_idx}  ({frame_idx / fps:.3f}s)")
         elif key == ord("o"):
-            marks.append(
-                {
-                    "event": "takeoff",
-                    "frame": frame_idx,
-                    "time_sec": round(frame_idx / fps, 3),
-                }
-            )
-            print(f"  → takeoff    frame {frame_idx}  ({frame_idx / fps:.3f}s)")
+            # Takeoff belongs to the same bout as its preceding touchdown → keep side.
+            # Ask only if this is the very first event (leading takeoff).
+            if current_side is None:
+                side = _ask_side()
+                if side is None:
+                    continue  # ESC: discard
+                current_side = side
+            marks.append({"event": "takeoff", "frame": frame_idx,
+                           "time_sec": round(frame_idx / fps, 3), "side": current_side})
+            print(f"  → takeoff   ({current_side})  frame {frame_idx}  ({frame_idx / fps:.3f}s)")
         elif key == ord("z") and marks:
             removed = marks.pop()
-            print(f"  ✗ undid {removed['event']} at frame {removed['frame']}")
+            print(f"  ✗ undid {removed['event']} ({removed.get('side', '?')}) at frame {removed['frame']}")
+            # Restore current_side to what it was before this mark was added.
+            if not marks:
+                current_side = None
+            elif removed["event"] == "touchdown":
+                # We flipped on this TD, so flip back.
+                current_side = _flip(current_side)
+            # For a removed takeoff the side doesn't change (it mirrored the TD).
         elif not paused:
             next_frame = min(frame_idx + 1, total_frames - 1)
             cv2.setTrackbarPos("Frame", WIN, next_frame)
@@ -154,29 +200,57 @@ def marks_to_labels(video_path: str, marks: list[dict]) -> pd.DataFrame:
     cap.release()
 
     sorted_marks = sorted(marks, key=lambda m: m["frame"])
-    touchdowns = [m for m in sorted_marks if m["event"] == "touchdown"]
-    takeoffs = [m for m in sorted_marks if m["event"] == "takeoff"]
-
-    labels = np.full(total_frames, "flight", dtype=object)
-
-    for td, to in zip(touchdowns, takeoffs):
-        start = max(0, int(td["frame"]))
-        end = min(total_frames - 1, int(to["frame"]))
-        labels[start : end + 1] = "contact"
-
-    for td in touchdowns[len(takeoffs) :]:
-        labels[max(0, int(td["frame"]))] = "contact"
 
     if not sorted_marks:
         return pd.DataFrame()
 
-    first_frame = int(sorted_marks[0]["frame"])
+    labels = np.full(total_frames, "flight", dtype=object)
+    sides  = np.full(total_frames, None,     dtype=object)
+
+    # Walk marks sequentially so that partial contacts at the edges of the
+    # recording are handled correctly:
+    #   - A takeoff with no preceding touchdown means the landing happened
+    #     before the recording started → contact from frame 0 to that takeoff.
+    #   - A touchdown with no following takeoff means the takeoff is cut off
+    #     at the end → contact from that touchdown to the last frame.
+    i = 0
+    while i < len(sorted_marks):
+        m = sorted_marks[i]
+        if m["event"] == "takeoff":
+            # Unmatched leading takeoff: contact from recording start
+            start, end = 0, min(total_frames - 1, int(m["frame"]))
+            labels[start : end + 1] = "contact"
+            sides[start : end + 1]  = m.get("side")
+            i += 1
+        else:  # touchdown
+            if i + 1 < len(sorted_marks) and sorted_marks[i + 1]["event"] == "takeoff":
+                nxt = sorted_marks[i + 1]
+                start = max(0, int(m["frame"]))
+                end   = min(total_frames - 1, int(nxt["frame"]))
+                if start >= end:
+                    print(f"  ⚠  skipping invalid pair: touchdown f{m['frame']} ≥ takeoff f{nxt['frame']}")
+                else:
+                    labels[start : end + 1] = "contact"
+                    sides[start : end + 1]  = m.get("side")
+                i += 2
+            else:
+                # Unmatched trailing touchdown: contact to recording end
+                start = max(0, int(m["frame"]))
+                labels[start:] = "contact"
+                sides[start:]  = m.get("side")
+                i += 1
+
+    # Start the output DataFrame from the first contact frame (which may be
+    # frame 0 when a leading takeoff is present).
+    contact_indices = np.where(labels != "flight")[0]
+    first_frame = int(contact_indices[0]) if len(contact_indices) else int(sorted_marks[0]["frame"])
     return pd.DataFrame(
         {
             "video_file": os.path.basename(video_path),
             "video_path": video_path,
             "frame_number": np.arange(first_frame, total_frames),
             "label": labels[first_frame:],
+            "side":  sides[first_frame:],
         }
     )
 
