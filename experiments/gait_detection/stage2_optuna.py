@@ -48,7 +48,10 @@ def objective(trial, train_records, val_records, cfg: ExperimentConfig):
     n_filters   = trial.suggest_categorical("n_filters",   [32, 64, 128])
     kernel_size = trial.suggest_categorical("kernel_size", [3, 5, 7])
 
+    n_features = len(cfg.feature_idx) if cfg.feature_idx is not None else 22
+
     model = TCN(
+        n_features=n_features,
         n_blocks=n_blocks,
         n_filters=n_filters,
         kernel_size=kernel_size,
@@ -70,8 +73,8 @@ def objective(trial, train_records, val_records, cfg: ExperimentConfig):
     )
     trainer = Trainer(model, class_weights, trainer_cfg, trial=trial)
 
-    train_ds = GaitWindowDataset(train_records, window_size=cfg.window_size)
-    val_ds   = GaitSequenceDataset(val_records)
+    train_ds = GaitWindowDataset(train_records, window_size=cfg.window_size, feature_idx=cfg.feature_idx)
+    val_ds   = GaitSequenceDataset(val_records, feature_idx=cfg.feature_idx)
 
     train_loader = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True, num_workers=0)
     val_loader   = DataLoader(val_ds,   batch_size=1, shuffle=False,

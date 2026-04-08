@@ -25,6 +25,19 @@ class ExperimentConfig:
     lr_schedule_factor: float = 0.5
     lr_schedule_patience: int = 10
 
+    # Feature selection
+    # Set to a list of feature indices to use a subset of the 22 features.
+    # None = use all 22. Use the FEATURE_GROUPS dict in stage1_baselines.py
+    # as named presets, or pass indices directly after inspecting Stage 1 results.
+    #
+    # Index layout (from features.py):
+    #   0–5   norm. y-positions   (L/R heel, big_toe, ankle)
+    #   6–11  y-velocities        (L/R heel, big_toe, ankle)
+    #   12–15 x-velocities        (L/R heel, big_toe)
+    #   16–19 joint angles        (L/R knee, L/R ankle)
+    #   20–21 hip y + hip dy/dt
+    feature_idx: list[int] | None = None  # None → all 22 features
+
     # Architecture defaults
     n_blocks: int = 4
     n_filters: int = 64

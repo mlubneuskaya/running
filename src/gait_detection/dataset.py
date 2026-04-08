@@ -149,12 +149,22 @@ def load_dataset(annotations_csv: str, fps: float = float(RECORDING_FPS)) -> lis
 
 # ── datasets ────────────────────────────────────────────────────────────────
 
+def _select(features: np.ndarray, feature_idx: list[int] | None) -> np.ndarray:
+    return features if feature_idx is None else features[:, feature_idx]
+
+
 class GaitWindowDataset(Dataset):
     """Training dataset: random window of fixed length sampled per video."""
 
-    def __init__(self, records: list[VideoRecord], window_size: int = 75):
+    def __init__(
+        self,
+        records: list[VideoRecord],
+        window_size: int = 75,
+        feature_idx: list[int] | None = None,
+    ):
         self.records = records
         self.window_size = window_size
+        self.feature_idx = feature_idx
 
     def __len__(self) -> int:
         return len(self.records)
@@ -163,14 +173,13 @@ class GaitWindowDataset(Dataset):
         rec = self.records[idx]
         T = len(rec.features)
         if T <= self.window_size:
-            # Pad with edge values
             pad = self.window_size - T
-            feats = np.pad(rec.features, ((0, pad), (0, 0)), mode="edge")
+            feats = np.pad(_select(rec.features, self.feature_idx), ((0, pad), (0, 0)), mode="edge")
             labels = np.pad(rec.labels, (0, pad), mode="edge")
             mask = np.array([True] * T + [False] * pad, dtype=bool)
         else:
             start = np.random.randint(0, T - self.window_size + 1)
-            feats = rec.features[start: start + self.window_size]
+            feats = _select(rec.features, self.feature_idx)[start: start + self.window_size]
             labels = rec.labels[start: start + self.window_size]
             mask = np.ones(self.window_size, dtype=bool)
 
@@ -184,8 +193,9 @@ class GaitWindowDataset(Dataset):
 class GaitSequenceDataset(Dataset):
     """Inference/validation dataset: whole sequences, padded to batch max length."""
 
-    def __init__(self, records: list[VideoRecord]):
+    def __init__(self, records: list[VideoRecord], feature_idx: list[int] | None = None):
         self.records = records
+        self.feature_idx = feature_idx
 
     def __len__(self) -> int:
         return len(self.records)
@@ -193,7 +203,7 @@ class GaitSequenceDataset(Dataset):
     def __getitem__(self, idx: int):
         rec = self.records[idx]
         return (
-            torch.from_numpy(rec.features),
+            torch.from_numpy(_select(rec.features, self.feature_idx)),
             torch.from_numpy(rec.labels),
             torch.ones(len(rec.features), dtype=torch.bool),
         )
