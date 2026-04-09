@@ -1,8 +1,12 @@
 """Temporal Convolutional Network for per-frame gait phase classification.
 
+Non-causal (offline) design: each block uses symmetric padding so every output
+frame can attend to both past and future context.  This is appropriate for
+offline detection where the full sequence is available at inference time.
+
 Architecture
 ------------
-Input: (batch, T, 22)
+Input: (batch, T, n_features)
   TCN Block 1: Conv1d(64, kernel=3, dilation=1)  + WeightNorm + ReLU + Dropout + residual
   TCN Block 2: Conv1d(64, kernel=3, dilation=2)  + WeightNorm + ReLU + Dropout + residual
   TCN Block 3: Conv1d(64, kernel=3, dilation=4)  + WeightNorm + ReLU + Dropout + residual
@@ -10,7 +14,8 @@ Input: (batch, T, 22)
   Conv1d(3, kernel=1) → log-softmax per frame
 
 Receptive field at default settings (4 blocks, kernel=3, dilations 1/2/4/8):
-  RF = 1 + 2 * (kernel-1) * sum(dilations) = 1 + 2*2*(1+2+4+8) = 31 frames
+  RF = 1 + 2 * (kernel-1) * sum(dilations) = 1 + 2*2*15 = 61 frames
+  (30 frames past + current frame + 30 frames future)
 """
 
 import torch
@@ -19,7 +24,10 @@ from torch.nn.utils import weight_norm
 
 
 class TCNBlock(nn.Module):
-    """Single dilated causal TCN block with residual connection."""
+    """Single dilated non-causal TCN block with residual connection.
+
+    Symmetric padding keeps output length == input length for any odd kernel size.
+    """
 
     def __init__(
         self,
@@ -30,8 +38,9 @@ class TCNBlock(nn.Module):
         dropout: float,
     ):
         super().__init__()
-        # Causal padding: pad only on the left so output length == input length
-        padding = (kernel_size - 1) * dilation
+        # Symmetric padding: (kernel-1)//2 * dilation on each side.
+        # Works exactly for odd kernel sizes (3, 5, 7, …).
+        padding = (kernel_size - 1) // 2 * dilation
         self.conv = weight_norm(
             nn.Conv1d(
                 in_channels,
@@ -43,20 +52,15 @@ class TCNBlock(nn.Module):
         )
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(dropout)
-        # 1×1 projection for residual when channels differ
         self.residual = (
             nn.Conv1d(in_channels, out_channels, kernel_size=1)
             if in_channels != out_channels
             else nn.Identity()
         )
-        self._padding = padding
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x: (B, C, T)
+        # x: (B, C, T) — output is exactly (B, out_channels, T)
         out = self.conv(x)
-        # Remove the extra causal padding on the right
-        if self._padding > 0:
-            out = out[:, :, : -self._padding]
         out = self.relu(out)
         out = self.dropout(out)
         return out + self.residual(x)
@@ -76,7 +80,7 @@ class TCN(nn.Module):
     n_filters : int
         Number of convolutional filters in each block.
     kernel_size : int
-        Kernel size for all dilated convolutions.
+        Kernel size for all dilated convolutions.  Must be odd.
     dropout : float
         Dropout probability applied after each block's activation.
     """
@@ -90,6 +94,7 @@ class TCN(nn.Module):
         kernel_size: int = 3,
         dropout: float = 0.2,
     ):
+        assert kernel_size % 2 == 1, f"kernel_size must be odd, got {kernel_size}"
         super().__init__()
         blocks = []
         for i in range(n_blocks):
@@ -119,20 +124,19 @@ class TCN(nn.Module):
         torch.Tensor
             Log-probabilities, shape (B, T, n_classes).
         """
-        # Conv1d expects (B, C, T)
-        x = x.permute(0, 2, 1)
-        x = self.blocks(x)
-        logits = self.classifier(x)          # (B, n_classes, T)
+        x = x.permute(0, 2, 1)               # (B, n_features, T)
+        x = self.blocks(x)                    # (B, n_filters, T)
+        logits = self.classifier(x)           # (B, n_classes, T)
         return torch.log_softmax(logits, dim=1).permute(0, 2, 1)  # (B, T, n_classes)
 
     @property
     def receptive_field(self) -> int:
-        """Number of frames the model's context window covers.
+        """Total number of frames in the context window (past + current + future).
 
-        Causal (one-sided) padding: RF = 1 + sum_i (kernel-1) * dilation_i
+        Symmetric padding: RF = 1 + 2 * sum_i (kernel-1) * dilation_i
         """
         rf = 1
         for i, block in enumerate(self.blocks):
             dilation = 2 ** i
-            rf += (block.conv.weight.shape[2] - 1) * dilation
+            rf += 2 * (block.conv.weight.shape[2] - 1) * dilation
         return rf

@@ -16,12 +16,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from src.gait_analysis.parameter_calculation.gait_events.gait_events_detection import (
-    detect_landings,
-    detect_liftoffs,
-    enforce_alternating,
-)
-from src.gait_detection.postprocess import min_duration_filter
+from src.gait.detection.postprocess import min_duration_filter
+from src.gait.events.detection import detect_liftoffs, detect_landings, enforce_alternating
 
 # Feature indices (see features.py layout)
 _LEFT_HEEL_Y   = 0

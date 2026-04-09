@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.signal import butter, filtfilt
 
-from src.gait_analysis.data_cleaning.left_right_filter import GaitSideFilter
+from src.gait.gait_data.filters import GaitSideFilter
 
 
 def get_valid_frames(pose_data: list[dict], keypoints: list) -> list[int]:

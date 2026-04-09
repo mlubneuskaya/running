@@ -1,14 +1,25 @@
 import json
 import os
 
+import numpy as np
 import pandas as pd
 
-from src.model_comparison.jitter_analysis import (
-    calculate_link_metrics,
-    calculate_jitter_metrics,
-)
-from src.model_comparison.tracking_analysis import count_detection_gaps
-from src.utils.model_comparison.comparison_metrics import expand_lists_to_cols
+from src.pose.model_comparison.jitter_analysis import calculate_link_metrics, calculate_jitter_metrics
+from src.pose.model_comparison.tracking_analysis import count_detection_gaps
+
+
+def expand_lists_to_cols(df):
+    expanded_data = {}
+
+    for col in df.columns:
+        expanded_data[f"{col}_x"] = df[col].apply(
+            lambda val: val[0] if isinstance(val, (tuple, list, np.ndarray)) else np.nan
+        )
+        expanded_data[f"{col}_y"] = df[col].apply(
+            lambda val: val[1] if isinstance(val, (tuple, list, np.ndarray)) else np.nan
+        )
+
+    return pd.DataFrame(expanded_data)
 
 
 def aggregate_experiment_results(

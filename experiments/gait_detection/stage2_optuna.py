@@ -14,7 +14,7 @@ Usage (local)
     python -m experiments.gait_detection.stage2_optuna
     python -m experiments.gait_detection.stage2_optuna --n_trials 10
 
-Usage (PLGrid — see slurm/stage2_optuna.sbatch)
+Usage (PLGrid — see hpc/stage2_optuna.sbatch)
 -----------------------------------------------
     python -m experiments.gait_detection.stage2_optuna \\
         --storage sqlite:////net/shared/path/study.db \\
@@ -30,15 +30,10 @@ import optuna
 from torch.utils.data import DataLoader
 
 from experiments.gait_detection.config import ExperimentConfig
-from src.gait_detection.dataset import (
-    GaitSequenceDataset,
-    GaitWindowDataset,
-    compute_class_weights,
-    load_dataset,
-    tuning_split,
-)
-from src.gait_detection.model import TCN
-from src.gait_detection.train import Trainer, TrainerConfig
+from src.gait.detection.model import TCN
+from src.gait.detection.train import TrainerConfig, Trainer
+from src.gait.gait_data.dataset import compute_class_weights, GaitWindowDataset, GaitSequenceDataset, load_dataset, \
+    tuning_split
 
 
 def objective(trial, train_records, val_records, cfg: ExperimentConfig):

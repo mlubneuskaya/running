@@ -53,3 +53,7 @@ models/*
 
 .env
 /docs/
+/bash/
+/.claude/
+/hpc/
+/notebooks/drafts/

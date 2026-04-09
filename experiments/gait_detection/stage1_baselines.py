@@ -30,10 +30,11 @@ import numpy as np
 import xgboost as xgb
 
 from experiments.gait_detection.config import ExperimentConfig
-from src.gait_detection.dataset import load_dataset, tuning_split
-from src.gait_detection.detectors import KinematicDetector
-from src.gait_detection.metrics import per_class_f1, confusion_matrix, timing_error_full
-from src.gait_detection.postprocess import derive_events
+from src.gait.detection.detectors import KinematicDetector
+from src.gait.detection.metrics import timing_error_full, per_class_f1, confusion_matrix
+from src.gait.detection.postprocess import derive_events
+from src.gait.gait_data.dataset import tuning_split, load_dataset
+
 
 # ── feature group slices (indices into the 22-feature vector) ────────────────
 # 0–5   : norm. y-positions  (L/R heel, big_toe, ankle)

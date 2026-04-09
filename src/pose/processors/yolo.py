@@ -3,7 +3,7 @@ import numpy as np
 from ultralytics import YOLO
 from typing import List, Dict, Any, Optional
 
-from src.processors.base import PoseModel
+from src.pose.processors.base import PoseModel
 
 
 class YoloProcessor(PoseModel):

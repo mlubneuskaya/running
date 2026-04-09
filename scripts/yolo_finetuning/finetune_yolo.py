@@ -9,7 +9,7 @@ import multiprocessing as mp
 from ultralytics import YOLO
 from ray.tune import ExperimentAnalysis
 
-from src.yolo.model_download import download_model
+from src.pose.utils.download import download_model
 
 logging.basicConfig(
     level=logging.INFO,

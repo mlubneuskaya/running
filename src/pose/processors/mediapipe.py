@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from typing import Dict, Any, Optional, List
 
-from src.processors.base import PoseModel
+from src.pose.processors.base import PoseModel
 
 
 class MediaPipeProcessor(PoseModel):

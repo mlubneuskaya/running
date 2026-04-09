@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Iterator
 
 import numpy as np
@@ -31,8 +31,8 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from src.gait_analysis.data_cleaning.data_smoothing import smooth_pose_data
-from src.gait_detection.features import extract_features
+from src.gait.detection.features import extract_features
+from src.gait.gait_data.smoothing import smooth_pose_data
 
 LABEL_MAP = {"left_stance": 0, "right_stance": 1, "flight": 2}
 # contact + side → stance label

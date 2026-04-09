@@ -5,13 +5,13 @@ import logging
 import numpy as np
 from typing import List, Dict, Tuple
 
-from src.processors.base import PoseModel
-from src.processors.yolo import YoloProcessor, YOLOProcessorFeet
-from src.processors.mediapipe import MediaPipeProcessor
-from src.utils.file_discovery import get_video_files
-from src.utils.get_path import get_mirror_path
-from src.utils.load_config import load_config
-from src.utils.detection.filtering import filter_main_runner
+from src.pose.processors.base import PoseModel
+from src.pose.processors.mediapipe import MediaPipeProcessor
+from src.pose.processors.yolo import YoloProcessor, YOLOProcessorFeet
+from src.pose.utils.detection.filtering import filter_main_runner
+from src.pose.utils.file_discovery import get_video_files
+from src.pose.utils.get_path import get_mirror_path
+from src.pose.utils.load_config import load_config
 
 logger = logging.getLogger(__name__)
 
