@@ -135,3 +135,28 @@ class KinematicDetector:
         labels[conflict & (right_y >  left_y)] = 1
 
         return min_duration_filter(labels, self.min_frames)
+
+
+class XGBoostDetector:
+    """XGBoost-based gait phase detector.
+
+    Wraps a joblib-serialized XGBClassifier trained on the 22-feature vector
+    (or a subset of it).  Implements the same interface as KinematicDetector.
+
+    Parameters
+    ----------
+    model_path : str
+        Path to a joblib-serialized XGBClassifier produced by stage_xgb_tune.py.
+    feature_idx : list[int] | None
+        Feature indices to select from the (T, 22) input before passing to the
+        model.  Must match what the model was trained on.  None = all 22.
+    """
+
+    def __init__(self, model_path: str, feature_idx: list[int] | None = None):
+        import joblib
+        self.clf = joblib.load(model_path)
+        self.feature_idx = feature_idx
+
+    def predict(self, features: np.ndarray, fps: float) -> np.ndarray:
+        feats = features if self.feature_idx is None else features[:, self.feature_idx]
+        return self.clf.predict(feats).astype(np.int64)
