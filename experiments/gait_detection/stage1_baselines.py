@@ -31,6 +31,7 @@ import xgboost as xgb
 
 from experiments.gait_detection.config import ExperimentConfig
 from src.gait.detection.detectors import KinematicDetector
+from src.pose.utils.load_config import load_config
 from src.gait.detection.metrics import timing_error_full, per_class_f1, confusion_matrix
 from src.gait.detection.postprocess import derive_events
 from src.gait.gait_data.dataset import tuning_split, load_dataset
@@ -175,11 +176,16 @@ def main(cfg: ExperimentConfig | None = None) -> None:
         json.dump(all_results, f, indent=2)
 
 
+DEFAULT_CONFIG = "configs/experiments/stage1_baselines.yaml"
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_overrides", default="{}", help="JSON string of config field overrides")
+    parser.add_argument(
+        "--config", default=DEFAULT_CONFIG,
+        help="Path to YAML config file (default: configs/experiments/stage1_baselines.yaml)",
+    )
     args = parser.parse_args()
 
-    overrides = json.loads(args.config_overrides)
-    cfg = ExperimentConfig(**overrides) if overrides else ExperimentConfig()
+    raw = load_config(args.config)
+    cfg = ExperimentConfig(**raw.get("experiment", {}))
     main(cfg)

@@ -35,6 +35,7 @@ from src.gait.detection.features import extract_features
 from src.gait.gait_data.smoothing import smooth_pose_data
 
 LABEL_MAP = {"left_stance": 0, "right_stance": 1, "flight": 2}
+ANNOTATION_PADDING = 3  # pose frames to keep before first and after last annotation
 # contact + side → stance label
 CONTACT_SIDE_MAP = {"left": 0, "right": 1}
 
@@ -100,16 +101,79 @@ def _load_smooth(pose_path: str) -> pd.DataFrame | None:
     return smooth
 
 
-def _annotation_to_labels(ann: pd.DataFrame, n_frames: int) -> np.ndarray:
-    """Convert annotation DataFrame rows to a per-frame label array."""
+def _pad_label(ann_sorted: pd.DataFrame, end: str) -> int:
+    """Return the label to use for padding frames outside the annotation window.
+
+    Leading padding (end="first"):
+        If the first annotated frame is contact → before it was flight.
+        If the first annotated frame is flight  → before it was contact;
+          infer side as the opposite of the first contact seen in the sequence
+          (since feet alternate, the contact before an initial flight is the
+          other foot).
+
+    Trailing padding (end="last"):
+        Continues the state of the last annotated frame.
+          last = contact right/left → pad as contact same side
+          last = flight             → pad as flight
+    """
+    if end == "last":
+        last_row = ann_sorted.iloc[-1]
+        if last_row["label"] == "contact":
+            return CONTACT_SIDE_MAP.get(last_row.get("side"), LABEL_MAP["flight"])
+        return LABEL_MAP["flight"]
+
+    # end == "first"
+    first_row = ann_sorted.iloc[0]
+    if first_row["label"] == "contact":
+        # video starts mid-contact → frames before it were flight
+        return LABEL_MAP["flight"]
+    # video starts mid-flight → frames before it were contact
+    contact_rows = ann_sorted[ann_sorted["label"] == "contact"]
+    if contact_rows.empty:
+        return LABEL_MAP["flight"]
+    first_contact_side = contact_rows.iloc[0].get("side", None)
+    other_side = "right" if first_contact_side == "left" else "left"
+    return CONTACT_SIDE_MAP.get(other_side, LABEL_MAP["flight"])
+
+
+def _annotation_to_labels(
+    ann: pd.DataFrame,
+    first_frame: int,
+    n_frames: int,
+) -> np.ndarray:
+    """Build a per-frame label array for the pose window [first_frame, first_frame+n_frames).
+
+    Only the annotated range is taken from the CSV.  Pose frames that fall
+    before or after the annotation window are filled with a padding label
+    inferred from the state at the annotation boundary (see _pad_label).
+    """
+    ann_sorted = ann.sort_values("frame_number")
+    first_ann  = int(ann_sorted["frame_number"].iloc[0])
+    last_ann   = int(ann_sorted["frame_number"].iloc[-1])
+
+    leading_label  = _pad_label(ann_sorted, "first")
+    trailing_label = _pad_label(ann_sorted, "last")
+
     labels = np.full(n_frames, LABEL_MAP["flight"], dtype=np.int64)
-    for _, row in ann.iterrows():
-        fi = int(row["frame_number"])
-        if fi >= n_frames:
+
+    # leading padding: pose frames before the annotation window
+    leading_end = max(0, min(first_ann - first_frame, n_frames))
+    labels[:leading_end] = leading_label
+
+    # annotated frames
+    for _, row in ann_sorted.iterrows():
+        fi = int(row["frame_number"]) - first_frame
+        if not (0 <= fi < n_frames):
             continue
         if row["label"] == "contact":
-            side = row.get("side", None)
-            labels[fi] = CONTACT_SIDE_MAP.get(side, LABEL_MAP["flight"])
+            labels[fi] = CONTACT_SIDE_MAP.get(row.get("side"), LABEL_MAP["flight"])
+        else:
+            labels[fi] = LABEL_MAP["flight"]
+
+    # trailing padding: pose frames after the annotation window
+    trailing_start = max(0, min(last_ann - first_frame + 1, n_frames))
+    labels[trailing_start:] = trailing_label
+
     return labels
 
 
@@ -130,11 +194,16 @@ def load_dataset(annotations_csv: str, fps: float = float(RECORDING_FPS)) -> lis
 
         feats = extract_features(smooth, fps=fps)
         T = len(feats)
-
-        # Align annotations by frame_index present in smooth
         first_frame = int(smooth["frame_index"].iloc[0])
-        labels_full = _annotation_to_labels(group, first_frame + T)
-        labels = labels_full[first_frame: first_frame + T]
+        labels = _annotation_to_labels(group, first_frame, T)
+
+        # Clip to annotation window ± ANNOTATION_PADDING frames
+        first_ann = int(group["frame_number"].min())
+        last_ann  = int(group["frame_number"].max())
+        start_idx = max(0, first_ann - ANNOTATION_PADDING - first_frame)
+        end_idx   = min(T, last_ann  + ANNOTATION_PADDING - first_frame + 1)
+        feats  = feats[start_idx:end_idx]
+        labels = labels[start_idx:end_idx]
 
         athlete = _athlete_from_path(video_path)
         records.append(VideoRecord(
