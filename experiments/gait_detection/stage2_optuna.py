@@ -1,30 +1,27 @@
 """Stage 2 — Joint hyperparameter search over all 5 parameters.
 
 Tunes learning rate, dropout, n_blocks, n_filters, and kernel_size together
-in a single Optuna study.  Separating architecture from training dynamics and
-fixing one before tuning the other risks evaluating good architectures with
-the wrong lr/dropout — a joint search avoids this at negligible extra cost
-since TPE handles 5 dimensions well.
+in a single Optuna study.  Designed for parallel execution: multiple SLURM
+jobs point at the same SQLite database and contribute trials concurrently.
 
-Designed for parallel execution: multiple SLURM jobs (or local processes) point
-at the same SQLite database and contribute trials concurrently.
+All settings are read from a YAML config file.  No experiment parameters are
+passed on the command line.
 
-Usage (local)
--------------
+Usage
+-----
     python -m experiments.gait_detection.stage2_optuna
-    python -m experiments.gait_detection.stage2_optuna --n_trials 10
+    python -m experiments.gait_detection.stage2_optuna --config configs/experiments/stage2_optuna.yaml
 
-Usage (PLGrid — see hpc/stage2_optuna.sbatch)
------------------------------------------------
-    python -m experiments.gait_detection.stage2_optuna \\
-        --storage sqlite:////net/shared/path/study.db \\
-        --n_trials 10
+Output
+------
+    experiments/gait_detection/results/stage2_best_params.json
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 
 import optuna
 from torch.utils.data import DataLoader
@@ -34,6 +31,9 @@ from src.gait.detection.model import TCN
 from src.gait.detection.train import TrainerConfig, Trainer
 from src.gait.gait_data.dataset import compute_class_weights, GaitWindowDataset, GaitSequenceDataset, load_dataset, \
     tuning_split
+from src.pose.utils.load_config import load_config
+
+DEFAULT_CONFIG = "configs/experiments/stage2_optuna.yaml"
 
 
 def objective(trial, train_records, val_records, cfg: ExperimentConfig):
@@ -76,6 +76,9 @@ def objective(trial, train_records, val_records, cfg: ExperimentConfig):
                               collate_fn=GaitSequenceDataset.collate, num_workers=0)
 
     result = trainer.fit(train_loader, val_loader)
+    trial.set_user_attr("train_losses", result["train_losses"])
+    trial.set_user_attr("val_losses",   result["val_losses"])
+    trial.set_user_attr("best_epoch",   result["best_epoch"])
     return result["best_val_loss"]
 
 
@@ -108,11 +111,18 @@ def main(cfg: ExperimentConfig, storage: str | None, n_trials: int) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--storage",  default=None, help="Optuna storage URL (default from config)")
-    parser.add_argument("--n_trials", type=int, default=10, help="Trials to run in this process")
-    parser.add_argument("--config_overrides", default="{}", help="JSON string of ExperimentConfig overrides")
+    parser.add_argument(
+        "--config", default=DEFAULT_CONFIG,
+        help="Path to YAML config file (default: configs/experiments/stage2_optuna.yaml)",
+    )
     args = parser.parse_args()
 
-    overrides = json.loads(args.config_overrides)
-    cfg = ExperimentConfig(**overrides) if overrides else ExperimentConfig()
-    main(cfg, args.storage, args.n_trials)
+    raw = load_config(args.config)
+
+    cfg = ExperimentConfig(**raw.get("experiment", {}))
+
+    optuna_section = raw.get("optuna", {})
+    storage  = os.path.expandvars(optuna_section.get("storage", cfg.optuna_storage))
+    n_trials = optuna_section.get("n_trials", 10)
+
+    main(cfg, storage, n_trials)

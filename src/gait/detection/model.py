@@ -20,7 +20,7 @@ Receptive field at default settings (4 blocks, kernel=3, dilations 1/2/4/8):
 
 import torch
 import torch.nn as nn
-from torch.nn.utils import weight_norm
+from torch.nn.utils.parametrizations import weight_norm
 
 
 class TCNBlock(nn.Module):

@@ -41,14 +41,7 @@ def train_epoch(
         masks = masks.to(device)          # (B, T)
 
         optimizer.zero_grad()
-        log_probs = model(feats)           # (B, T, C)
-
-        # Flatten, apply mask
-        B, T, C = log_probs.shape
-        log_probs_flat = log_probs.reshape(B * T, C)[masks.reshape(-1)]
-        labels_flat = labels.reshape(B * T)[masks.reshape(-1)]
-
-        loss = criterion(log_probs_flat, labels_flat)
+        loss = calculate_loss(criterion, feats, labels, masks, model)
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
         optimizer.step()
@@ -57,6 +50,18 @@ def train_epoch(
         n_batches += 1
 
     return total_loss / max(n_batches, 1)
+
+
+def calculate_loss(criterion: nn.Module, feats, labels, masks, model: nn.Module) -> nn.modules.loss._Loss:
+    log_probs = model(feats)  # (B, T, C)
+
+    # Flatten, apply mask
+    B, T, C = log_probs.shape
+    log_probs_flat = log_probs.reshape(B * T, C)[masks.reshape(-1)]
+    labels_flat = labels.reshape(B * T)[masks.reshape(-1)]
+
+    loss = criterion(log_probs_flat, labels_flat)
+    return loss
 
 
 @torch.no_grad()
@@ -76,12 +81,7 @@ def val_epoch(
         labels = labels.to(device)
         masks = masks.to(device)
 
-        log_probs = model(feats)
-        B, T, C = log_probs.shape
-        log_probs_flat = log_probs.reshape(B * T, C)[masks.reshape(-1)]
-        labels_flat = labels.reshape(B * T)[masks.reshape(-1)]
-
-        loss = criterion(log_probs_flat, labels_flat)
+        loss = calculate_loss(criterion, feats, labels, masks, model)
         total_loss += loss.item()
         n_batches += 1
 
@@ -150,11 +150,14 @@ class Trainer:
         Returns
         -------
         dict
-            ``{"best_val_loss": float, "best_epoch": int, "epochs_trained": int}``
+            ``{"best_val_loss": float, "best_epoch": int, "epochs_trained": int,
+               "train_losses": list[float], "val_losses": list[float]}``
         """
         best_val_loss = float("inf")
         best_epoch = 0
         patience_counter = 0
+        train_losses: list[float] = []
+        val_losses:   list[float] = []
 
         for epoch in range(1, self.config.max_epochs + 1):
             t0 = time.time()
@@ -165,6 +168,8 @@ class Trainer:
             val_loss = val_epoch(self.model, val_loader, self.criterion, self.device)
             elapsed = time.time() - t0
 
+            train_losses.append(train_loss)
+            val_losses.append(val_loss)
             self.scheduler.step(val_loss)
 
             if epoch_callback is not None:
@@ -195,7 +200,9 @@ class Trainer:
             self.model.load_state_dict(torch.load(self.config.checkpoint_path, map_location=self.device))
 
         return {
-            "best_val_loss": best_val_loss,
-            "best_epoch": best_epoch,
+            "best_val_loss":  best_val_loss,
+            "best_epoch":     best_epoch,
             "epochs_trained": epoch,
+            "train_losses":   train_losses,
+            "val_losses":     val_losses,
         }
