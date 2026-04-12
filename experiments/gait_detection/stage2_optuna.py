@@ -122,7 +122,16 @@ if __name__ == "__main__":
     cfg = ExperimentConfig(**raw.get("experiment", {}))
 
     optuna_section = raw.get("optuna", {})
-    storage  = os.path.expandvars(optuna_section.get("storage", cfg.optuna_storage))
-    n_trials = optuna_section.get("n_trials", 10)
+    n_trials     = optuna_section.get("n_trials", 10)
+    storage_type = optuna_section.get("storage_type", "sqlite")
+    storage_path = os.path.expandvars(optuna_section.get("storage", cfg.optuna_storage))
+
+    if storage_type == "journal":
+        os.makedirs(os.path.dirname(storage_path), exist_ok=True)
+        storage = optuna.storages.JournalStorage(
+            optuna.storages.JournalFileBackend(storage_path)
+        )
+    else:
+        storage = storage_path  # SQLite URL passed as string
 
     main(cfg, storage, n_trials)
