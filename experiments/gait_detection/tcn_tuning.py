@@ -133,7 +133,7 @@ if __name__ == "__main__":
     if storage_type == "journal":
         os.makedirs(os.path.dirname(storage_path), exist_ok=True)
         storage = optuna.storages.JournalStorage(
-            optuna.storages.JournalFileBackend(storage_path)
+            optuna.storages.journal.JournalFileBackend(storage_path)
         )
     else:
         storage = storage_path  # SQLite URL passed as string
