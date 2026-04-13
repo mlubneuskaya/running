@@ -39,6 +39,7 @@ jobs/
 output/
 runs/
 notebooks_drafts/
+gait/
 
 models/*
 *.pt
