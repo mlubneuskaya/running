@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 import os
-import time
 from dataclasses import dataclass
 from typing import Callable
 
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+
+logger = logging.getLogger(__name__)
 
 
 def _get_device(device: str | None = None) -> torch.device:
@@ -160,13 +162,11 @@ class Trainer:
         val_losses:   list[float] = []
 
         for epoch in range(1, self.config.max_epochs + 1):
-            t0 = time.time()
             train_loss = train_epoch(
                 self.model, train_loader, self.optimizer,
                 self.criterion, self.device, self.config.max_grad_norm,
             )
             val_loss = val_epoch(self.model, val_loader, self.criterion, self.device)
-            elapsed = time.time() - t0
 
             train_losses.append(train_loss)
             val_losses.append(val_loss)
@@ -192,7 +192,7 @@ class Trainer:
             else:
                 patience_counter += 1
                 if patience_counter >= self.config.early_stopping_patience:
-                    print(f"  Early stopping at epoch {epoch} (best val loss {best_val_loss:.4f} at epoch {best_epoch})")
+                    logger.info("Early stopping at epoch %d (best val loss %.4f at epoch %d)", epoch, best_val_loss, best_epoch)
                     break
 
         # Restore best weights if checkpoint saved

@@ -1,7 +1,10 @@
+import logging
 from typing import Tuple
 
 import cv2
 import matplotlib.pyplot as plt
+
+logger = logging.getLogger(__name__)
 
 
 def visualize_gait_phase(
@@ -59,6 +62,6 @@ def visualize_gait_phase(
 
     if save:
         plt.savefig(save, bbox_inches="tight", pad_inches=0.1, dpi=300)
-        print(f"Gait phase visualization saved to: {save}")
+        logger.info("Gait phase visualization saved to: %s", save)
 
     plt.show()

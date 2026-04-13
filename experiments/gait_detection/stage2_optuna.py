@@ -21,10 +21,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 
 import optuna
 from torch.utils.data import DataLoader
+
+logger = logging.getLogger(__name__)
 
 from experiments.gait_detection.config import ExperimentConfig
 from src.gait.detection.model import TCN
@@ -117,6 +120,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     raw = load_config(args.config)
 
     cfg = ExperimentConfig(**raw.get("experiment", {}))
