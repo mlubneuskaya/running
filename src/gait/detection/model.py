@@ -22,6 +22,8 @@ import torch
 import torch.nn as nn
 from torch.nn.utils.parametrizations import weight_norm
 
+from src.gait.detection.dilations import exponential
+
 
 class TCNBlock(nn.Module):
     """Single dilated non-causal TCN block with residual connection.
@@ -76,13 +78,17 @@ class TCN(nn.Module):
     n_classes : int
         Number of output classes (default 3).
     n_blocks : int
-        Number of dilated TCN blocks.  Dilations are 1, 2, 4, … 2^(n_blocks-1).
+        Number of dilated TCN blocks.
     n_filters : int
         Number of convolutional filters in each block.
     kernel_size : int
         Kernel size for all dilated convolutions.  Must be odd.
     dropout : float
         Dropout probability applied after each block's activation.
+    dilations : list[int] | None
+        Dilation value for each block.  Must have length ``n_blocks``.
+        Defaults to exponential schedule (1, 2, 4, …).  Use the functions in
+        ``src.gait.detection.dilations`` to build alternative schedules.
     """
 
     def __init__(
@@ -93,18 +99,24 @@ class TCN(nn.Module):
         n_filters: int = 64,
         kernel_size: int = 3,
         dropout: float = 0.2,
+        dilations: list[int] | None = None,
     ):
         assert kernel_size % 2 == 1, f"kernel_size must be odd, got {kernel_size}"
+        if dilations is None:
+            dilations = exponential(n_blocks)
+        assert len(dilations) == n_blocks, (
+            f"len(dilations)={len(dilations)} must equal n_blocks={n_blocks}"
+        )
         super().__init__()
         blocks = []
-        for i in range(n_blocks):
+        for i, dilation in enumerate(dilations):
             in_ch = n_features if i == 0 else n_filters
             blocks.append(
                 TCNBlock(
                     in_channels=in_ch,
                     out_channels=n_filters,
                     kernel_size=kernel_size,
-                    dilation=2 ** i,
+                    dilation=dilation,
                     dropout=dropout,
                 )
             )
@@ -136,7 +148,8 @@ class TCN(nn.Module):
         Symmetric padding: RF = 1 + 2 * sum_i (kernel-1) * dilation_i
         """
         rf = 1
-        for i, block in enumerate(self.blocks):
-            dilation = 2 ** i
-            rf += 2 * (block.conv.weight.shape[2] - 1) * dilation
+        for block in self.blocks:
+            kernel_size = block.conv.weight.shape[2]
+            dilation = block.conv.dilation[0]
+            rf += 2 * (kernel_size - 1) * dilation
         return rf

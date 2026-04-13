@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 from experiments.gait_detection.config import ExperimentConfig
 from src.gait.detection.metrics import timing_error_full, per_class_f1, confusion_matrix, aggregate_confusion_matrices
+import src.gait.detection.dilations as dilation_schedules
 from src.gait.detection.model import TCN
 from src.gait.detection.postprocess import derive_events, min_duration_filter
 from src.gait.detection.train import TrainerConfig, Trainer
@@ -37,7 +38,7 @@ from src.gait.gait_data.dataset import load_dataset, compute_class_weights, loao
 from src.pose.utils.load_config import load_config
 
 
-_REQUIRED_PARAMS = {"lr", "dropout", "n_blocks", "n_filters", "kernel_size"}
+_REQUIRED_PARAMS = {"lr", "dropout", "n_blocks", "n_filters", "kernel_size", "dilation_schedule"}
 
 
 def _load_best_params(best_params_path: str) -> dict:
@@ -97,12 +98,14 @@ def main(cfg: ExperimentConfig | None = None, best_params_path: str | None = Non
 
         n_features = len(cfg.feature_idx) if cfg.feature_idx is not None else 22
 
+        dilations = getattr(dilation_schedules, params["dilation_schedule"])(params["n_blocks"])
         model = TCN(
             n_features=n_features,
             n_blocks=params["n_blocks"],
             n_filters=params["n_filters"],
             kernel_size=params["kernel_size"],
             dropout=params["dropout"],
+            dilations=dilations,
         )
         ckpt = cfg.checkpoint_path(f"loao_{athlete}")
         trainer_cfg = TrainerConfig(
