@@ -11,13 +11,14 @@ CONFIG_OVERLAY_MEDIAPIPE := ./configs/config_overlay_mediapipe.yaml
 CONFIG_STAGE1   := ./configs/experiments/baselines.yaml
 CONFIG_STAGE2   := ./configs/experiments/tcn_tuning.yaml
 CONFIG_STAGE3   := ./configs/experiments/xgb_tuning.yaml
-CONFIG_STAGE4   := ./configs/experiments/tcn_loao_cv.yaml
+CONFIG_STAGE4   := ./configs/experiments/tcn_leave_one_out.yaml
+CONFIG_STAGE5    := ./configs/experiments/tcn_training.yaml
 
 YOLO_OUTPUT_DIR := ./data/output/yolo/overlays
 MEDIAPIPE_OUTPUT_DIR := ./data/output/mediapipe/overlays
 
 .PHONY: help setup process-yolo process-mp overlay visualize all clean \
-        stage1 stage2 stage4 xgb-tune gait-all
+        stage1 stage2 stage4 xgb-tune train gait-all
 
 help:
 	@echo "Available commands:"
@@ -34,6 +35,7 @@ help:
 	@echo "    make stage1         - Kinematic baseline + XGBoost ablation"
 	@echo "    make stage2         - TCN hyperparameter search (Optuna)"
 	@echo "    make stage4         - Full LOAO cross-validation"
+	@echo "    make train          - Final training on selected Optuna trials"
 	@echo "    make xgb-tune       - XGBoost hyperparameter tuning (Optuna)"
 	@echo "    make gait-all       - Run stage1 → stage2 → stage4 sequentially"
 	@echo ""
@@ -75,15 +77,19 @@ stage2:
 	@echo "Running Stage 2 — TCN hyperparameter search (Optuna)..."
 	$(PYTHON) -m experiments.gait_detection.tcn_tuning --config $(CONFIG_STAGE2)
 
-stage4:
-	@echo "Running Stage 4 — LOAO cross-validation..."
-	$(PYTHON) -m experiments.gait_detection.tcn_training --config $(CONFIG_STAGE4)
-
 stage3:
 	@echo "Running XGBoost hyperparameter tuning..."
 	$(PYTHON) -m experiments.gait_detection.xgb_tuning --config $(CONFIG_STAGE3)
 
-gait-all: stage1 stage2 stage3 stage4
+stage4:
+	@echo "Running Stage 4 — LOAO cross-validation..."
+	$(PYTHON) -m experiments.gait_detection.tcn_leave_one_out --config $(CONFIG_STAGE4)
+
+stage5:
+	@echo "Running final training on selected trials..."
+	$(PYTHON) -m experiments.gait_detection.tcn_training --config $(CONFIG_STAGE5)
+
+gait-all: stage1 stage2 stage3 stage4 stage5
 	@echo "All gait detection experiments complete."
 
 # ── housekeeping ──────────────────────────────────────────────────────────────

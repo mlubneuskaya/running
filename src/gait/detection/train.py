@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 logger = logging.getLogger(__name__)
 
 
-def _get_device(device: str | None = None) -> torch.device:
+def get_device(device: str | None = None) -> torch.device:
     if device is not None:
         return torch.device(device)
     if torch.cuda.is_available():
@@ -123,10 +123,10 @@ class Trainer:
         model: nn.Module,
         class_weights: torch.Tensor,
         config: TrainerConfig | None = None,
-        trial=None,  # optuna.Trial — optional, no hard dep
+        trial=None,
     ):
         self.config = config or TrainerConfig()
-        self.device = _get_device(self.config.device)
+        self.device = get_device(self.config.device)
         self.model = model.to(self.device)
         self.trial = trial
 
@@ -160,6 +160,7 @@ class Trainer:
         patience_counter = 0
         train_losses: list[float] = []
         val_losses:   list[float] = []
+        epoch = 0
 
         for epoch in range(1, self.config.max_epochs + 1):
             train_loss = train_epoch(
@@ -195,7 +196,6 @@ class Trainer:
                     logger.info("Early stopping at epoch %d (best val loss %.4f at epoch %d)", epoch, best_val_loss, best_epoch)
                     break
 
-        # Restore best weights if checkpoint saved
         if self.config.checkpoint_path and os.path.exists(self.config.checkpoint_path):
             self.model.load_state_dict(torch.load(self.config.checkpoint_path, map_location=self.device))
 

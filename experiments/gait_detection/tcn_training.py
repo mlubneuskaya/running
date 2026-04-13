@@ -1,17 +1,18 @@
-"""Stage 4 — Full leave-one-athlete-out cross-validation.
+"""Final training — train one model per selected Optuna trial on the full dataset.
 
-Reads best hyperparameters from Stage 2 (lr, dropout) and Stage 3 (architecture).
-Falls back to ExperimentConfig defaults if result files are not present.
+Loads hyperparameters directly from the Optuna study for each specified trial ID,
+trains on all available data, and saves a checkpoint per trial.  Intended to run
+after leave-one-out CV has identified the best-performing trial configurations.
 
 Usage
 -----
-    python -m experiments.gait_detection.stage4_loao_cv
-    python -m experiments.gait_detection.stage4_loao_cv --config_overrides '{"max_epochs": 50}'
+    python -m experiments.gait_detection.tcn_training
+    python -m experiments.gait_detection.tcn_training --config configs/experiments/tcn_training.yaml
 
 Output
 ------
-    experiments/gait_detection/results/stage4_loao_cv.json
-    experiments/gait_detection/checkpoints/loao_<athlete>.pt  (one per fold)
+    <checkpoint_dir>/trial_<id>.pt   — one checkpoint per trial
+    <output_dir>/tcn_training.json   — per-trial training summary
 """
 
 from __future__ import annotations
@@ -21,205 +22,163 @@ import json
 import logging
 import os
 
-import numpy as np
+import optuna
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
+
+import src.gait.detection.dilations as dilation_schedules
+from experiments.gait_detection.config import ExperimentConfig
+from src.gait.detection.model import TCN
+from src.gait.detection.train import train_epoch, get_device
+from src.gait.gait_data.dataset import load_dataset, compute_class_weights, GaitWindowDataset
+from src.pose.utils.load_config import load_config
 
 logger = logging.getLogger(__name__)
 
-from experiments.gait_detection.config import ExperimentConfig
-from src.gait.detection.metrics import timing_error_full, per_class_f1, confusion_matrix, aggregate_confusion_matrices
-import src.gait.detection.dilations as dilation_schedules
-from src.gait.detection.model import TCN
-from src.gait.detection.postprocess import derive_events, min_duration_filter
-from src.gait.detection.train import TrainerConfig, Trainer
-from src.gait.gait_data.dataset import load_dataset, compute_class_weights, loao_splits, GaitWindowDataset, \
-    GaitSequenceDataset
-from src.pose.utils.load_config import load_config
-
+DEFAULT_CONFIG = "configs/experiments/tcn_training.yaml"
 
 _REQUIRED_PARAMS = {"lr", "dropout", "n_blocks", "n_filters", "kernel_size", "dilation_schedule"}
 
 
-def _load_best_params(best_params_path: str) -> dict:
-    if not best_params_path:
-        raise ValueError("best_params_path is not set in the YAML config.")
+def _load_study(study_cfg: dict, experiment_cfg: ExperimentConfig) -> optuna.Study:
+    storage_type = study_cfg.get("storage_type", "journal")
+    storage_path = os.path.expandvars(study_cfg.get("log", experiment_cfg.optuna_storage))
+    study_name   = study_cfg.get("name", experiment_cfg.study_name)
 
-    if not os.path.exists(best_params_path):
-        raise FileNotFoundError(
-            f"Best params file not found: {best_params_path}\n"
-            "Run stage2_optuna.py first."
+    if storage_type == "journal":
+        storage = optuna.storages.JournalStorage(
+            optuna.storages.journal.JournalFileBackend(storage_path)
         )
+    else:
+        storage = storage_path
 
-    with open(best_params_path) as f:
-        d = json.load(f)
+    return optuna.load_study(study_name=study_name, storage=storage)
 
-    if "best_params" not in d:
-        raise KeyError(
-            f"'best_params' key missing in {best_params_path}."
-        )
 
-    params = d["best_params"]
+def _params_from_trial(trial: optuna.trial.FrozenTrial) -> dict:
+    params = trial.params
     missing = _REQUIRED_PARAMS - params.keys()
     if missing:
         raise KeyError(
-            f"Missing required parameters in {best_params_path}: {sorted(missing)}"
+            f"Trial #{trial.number} is missing required parameters: {sorted(missing)}"
         )
-
-    logger.info("Loaded best params from %s: %s", best_params_path, params)
     return params
 
 
-@torch.no_grad()
-def _predict(model: torch.nn.Module, rec, device: torch.device, feature_idx) -> np.ndarray:
-    model.eval()
-    feats = rec.features if feature_idx is None else rec.features[:, feature_idx]
-    x = torch.from_numpy(feats).unsqueeze(0).to(device)
-    log_probs = model(x)
-    return log_probs.squeeze(0).argmax(dim=-1).cpu().numpy()
+def train_trial(
+    trial_id: int,
+    params: dict,
+    records,
+    cfg: ExperimentConfig,
+    max_epochs: int,
+    log_every: int,
+) -> dict:
+    n_features = len(cfg.feature_idx) if cfg.feature_idx is not None else 22
+    dilations  = getattr(dilation_schedules, params["dilation_schedule"])(params["n_blocks"])
+
+    model = TCN(
+        n_features=n_features,
+        n_blocks=params["n_blocks"],
+        n_filters=params["n_filters"],
+        kernel_size=params["kernel_size"],
+        dropout=params["dropout"],
+        dilations=dilations,
+    )
+
+    device        = get_device()
+    model         = model.to(device)
+    class_weights = compute_class_weights(records, n_classes=cfg.n_classes).to(device)
+    criterion     = nn.NLLLoss(weight=class_weights)
+    optimizer     = torch.optim.Adam(model.parameters(), lr=params["lr"])
+    scheduler     = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=cfg.lr_schedule_factor, patience=cfg.lr_schedule_patience,
+    )
+
+    dataset = GaitWindowDataset(records, window_size=cfg.window_size, feature_idx=cfg.feature_idx)
+    loader  = DataLoader(dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=0)
+
+    train_losses: list[float] = []
+
+    for epoch in range(1, max_epochs + 1):
+        loss = train_epoch(model, loader, optimizer, criterion, device, cfg.max_grad_norm)
+        train_losses.append(loss)
+        scheduler.step(loss)
+        if epoch % log_every == 0:
+            logger.info("Trial %d  Epoch %3d/%d  train=%.4f", trial_id, epoch, max_epochs, loss)
+
+    ckpt_path = cfg.checkpoint_path(f"trial_{trial_id}")
+    torch.save(model.state_dict(), ckpt_path)
+    logger.info("Trial %d  saved → %s", trial_id, ckpt_path)
+
+    return {
+        "trial_id":     trial_id,
+        "params":       params,
+        "epochs":       max_epochs,
+        "final_loss":   train_losses[-1],
+        "train_losses": train_losses,
+        "checkpoint":   ckpt_path,
+    }
 
 
-def main(cfg: ExperimentConfig | None = None, best_params_path: str | None = None) -> None:
-    cfg = cfg or ExperimentConfig()
-    params = _load_best_params(best_params_path)
-
+def main(
+    cfg: ExperimentConfig,
+    study_cfg: dict,
+    trial_ids: list[int],
+    max_epochs: int,
+    log_every: int = 10,
+) -> None:
     logger.info("Loading dataset …")
     records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     logger.info("%d videos loaded.", len(records))
 
-    fold_results = []
-    all_cms = []
+    logger.info("Loading Optuna study …")
+    study = _load_study(study_cfg, cfg)
+    trials_by_id = {t.number: t for t in study.trials}
 
-    for fold_i, (train_records, val_records, athlete) in enumerate(loao_splits(records), 1):
-        logger.info("[Fold %d/%d] Held out: %s (%d videos)",
-                    fold_i, len({r.athlete for r in records}), athlete, len(val_records))
-
-        class_weights = compute_class_weights(train_records, n_classes=cfg.n_classes)
-
-        n_features = len(cfg.feature_idx) if cfg.feature_idx is not None else 22
-
-        dilations = getattr(dilation_schedules, params["dilation_schedule"])(params["n_blocks"])
-        model = TCN(
-            n_features=n_features,
-            n_blocks=params["n_blocks"],
-            n_filters=params["n_filters"],
-            kernel_size=params["kernel_size"],
-            dropout=params["dropout"],
-            dilations=dilations,
+    results = []
+    for trial_id in trial_ids:
+        if trial_id not in trials_by_id:
+            raise KeyError(f"Trial #{trial_id} not found in study '{study.study_name}'.")
+        trial  = trials_by_id[trial_id]
+        params = _params_from_trial(trial)
+        logger.info(
+            "Training trial %d  (val_loss=%.4f  dilation=%s  n_blocks=%d  n_filters=%d  kernel=%d)",
+            trial_id, trial.value, params["dilation_schedule"],
+            params["n_blocks"], params["n_filters"], params["kernel_size"],
         )
-        ckpt = cfg.checkpoint_path(f"loao_{athlete}")
-        trainer_cfg = TrainerConfig(
-            lr=params["lr"],
-            dropout=params["dropout"],
-            batch_size=cfg.batch_size,
-            max_epochs=cfg.max_epochs,
-            early_stopping_patience=cfg.early_stopping_patience,
-            lr_schedule_factor=cfg.lr_schedule_factor,
-            lr_schedule_patience=cfg.lr_schedule_patience,
-            max_grad_norm=cfg.max_grad_norm,
-            window_size=cfg.window_size,
-            checkpoint_path=ckpt,
-        )
-        trainer = Trainer(model, class_weights, trainer_cfg)
+        result = train_trial(trial_id, params, records, cfg, max_epochs, log_every)
+        results.append(result)
 
-        train_ds = GaitWindowDataset(train_records, window_size=cfg.window_size, feature_idx=cfg.feature_idx)  # TODO extract method?
-        val_ds   = GaitSequenceDataset(val_records, feature_idx=cfg.feature_idx)
-
-        train_loader = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True, num_workers=0)
-        val_loader   = DataLoader(val_ds,   batch_size=1, shuffle=False,
-                                  collate_fn=GaitSequenceDataset.collate, num_workers=0)
-
-        def print_epoch(epoch, train_loss, val_loss):
-            if epoch % 10 == 0:
-                logger.info("Epoch %3d  train=%.4f  val=%.4f", epoch, train_loss, val_loss)
-
-        train_result = trainer.fit(train_loader, val_loader, epoch_callback=print_epoch)
-
-        # ── per-video evaluation ──────────────────────────────────────────────
-        device = next(model.parameters()).device
-        fold_y_true, fold_y_pred = [], []
-
-        timing_errs: dict[str, list[dict]] = {
-            "left_landing": [], "left_takeoff": [],
-            "right_landing": [], "right_takeoff": [],
-        }
-
-        for rec in val_records:
-            raw_pred = _predict(model, rec, device, cfg.feature_idx)
-            pred = min_duration_filter(raw_pred, min_frames=3)
-            fold_y_true.append(rec.labels)
-            fold_y_pred.append(pred)
-
-            gt_events   = derive_events(rec.labels, fps=cfg.fps)
-            pred_events = derive_events(pred,        fps=cfg.fps)
-            for key in timing_errs:
-                err = timing_error_full(pred_events[key], gt_events[key], cfg.fps)
-                timing_errs[key].append(err)
-
-        y_true = np.concatenate(fold_y_true)
-        y_pred = np.concatenate(fold_y_pred)
-        f1     = per_class_f1(y_true, y_pred, n_classes=cfg.n_classes, class_names=cfg.class_names)
-        cm     = confusion_matrix(y_true, y_pred, n_classes=cfg.n_classes)
-        all_cms.append(cm)
-
-        def _mean_timing(lst: list[dict], unit: str) -> float:
-            vals = [d[unit] for d in lst if not np.isnan(d[unit])]
-            return float(np.mean(vals)) if vals else float("nan")
-
-        fold_result = {
-            "athlete":          athlete,
-            "n_val_videos":     len(val_records),
-            "f1":               f1,
-            "confusion_matrix": cm.tolist(),
-            "training":         train_result,
-            "timing_error": {
-                key: {
-                    "ms":     _mean_timing(timing_errs[key], "ms"),
-                    "frames": _mean_timing(timing_errs[key], "frames"),
-                }
-                for key in timing_errs
-            },
-        }
-        fold_results.append(fold_result)
-        logger.info("F1 macro=%.3f  left=%.3f  right=%.3f  flight=%.3f",
-                    f1["macro"], f1["left_stance"], f1["right_stance"], f1["flight"])
-
-    # ── aggregate ────────────────────────────────────────────────────────────
-    macro_f1s = [r["f1"]["macro"] for r in fold_results]
-    total_cm  = aggregate_confusion_matrices(all_cms)
-
-    summary = {
-        "n_folds":          len(fold_results),
-        "macro_f1_mean":    float(np.mean(macro_f1s)),
-        "macro_f1_std":     float(np.std(macro_f1s)),
-        "per_class_f1_mean": {
-            cls: float(np.mean([r["f1"][cls] for r in fold_results]))
-            for cls in cfg.class_names
-        },
-        "total_confusion_matrix": total_cm.tolist(),
-        "best_hyperparams":       params,
-        "folds":                  fold_results,
+    out = {
+        "max_epochs": max_epochs,
+        "n_models":   len(results),
+        "models":     [{k: v for k, v in r.items() if k != "train_losses"} for r in results],
     }
-
-    out_path = cfg.results_path("stage4_loao_cv")
+    out_path = cfg.results_path("tcn_training")
     with open(out_path, "w") as f:
-        json.dump(summary, f, indent=2)
-    logger.info("Results saved to %s", out_path)
-    logger.info("Macro F1: %.3f ± %.3f", summary["macro_f1_mean"], summary["macro_f1_std"])
+        json.dump(out, f, indent=2)
+    logger.info("Summary saved to %s", out_path)
 
-
-DEFAULT_CONFIG = "configs/experiments/stage4_loao_cv.yaml"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--config", default=DEFAULT_CONFIG,
-        help="Path to YAML config file (default: configs/experiments/stage4_loao_cv.yaml)",
-    )
+    parser.add_argument("--config", default=DEFAULT_CONFIG)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     raw = load_config(args.config)
-    cfg = ExperimentConfig(**raw.get("experiment", {}))
-    best_params_path = raw.get("best_params_path", None)
-    main(cfg, best_params_path)
+
+    cfg        = ExperimentConfig(**raw.get("experiment", {}))
+    study_cfg  = raw.get("study", {})
+    trial_ids  = raw.get("trial_ids", [])
+    max_epochs = raw.get("max_epochs", 300)
+    log_every  = raw.get("log_every", 10)
+
+    if not trial_ids:
+        raise ValueError("'trial_ids' is empty or missing in the config.")
+    if not study_cfg:
+        raise ValueError("'study' section is missing in the config.")
+
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    main(cfg, study_cfg, trial_ids, max_epochs, log_every)
