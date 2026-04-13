@@ -77,7 +77,7 @@ stage2:
 
 stage4:
 	@echo "Running Stage 4 — LOAO cross-validation..."
-	$(PYTHON) -m experiments.gait_detection.tcn_tuning --config $(CONFIG_STAGE4)
+	$(PYTHON) -m experiments.gait_detection.tcn_training --config $(CONFIG_STAGE4)
 
 stage3:
 	@echo "Running XGBoost hyperparameter tuning..."
