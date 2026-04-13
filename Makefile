@@ -8,10 +8,10 @@ CONFIG_OVERLAY_YOLO      := ./configs/config_overlay_yolo.yaml
 CONFIG_OVERLAY_MEDIAPIPE := ./configs/config_overlay_mediapipe.yaml
 
 # ── gait detection experiment configs ────────────────────────────────────────
-CONFIG_STAGE1   := ./configs/experiments/stage1_baselines.yaml
-CONFIG_STAGE2   := ./configs/experiments/stage2_optuna.yaml
-CONFIG_STAGE4   := ./configs/experiments/stage4_loao_cv.yaml
-CONFIG_XGB_TUNE := ./configs/experiments/stage_xgb_tune.yaml
+CONFIG_STAGE1   := ./configs/experiments/baselines.yaml
+CONFIG_STAGE2   := ./configs/experiments/tcn_tuning.yaml
+CONFIG_STAGE3   := ./configs/experiments/xgb_tuning.yaml
+CONFIG_STAGE4   := ./configs/experiments/tcn_loao_cv.yaml
 
 YOLO_OUTPUT_DIR := ./data/output/yolo/overlays
 MEDIAPIPE_OUTPUT_DIR := ./data/output/mediapipe/overlays
@@ -69,21 +69,21 @@ mediapipe: process-mediapipe overlay-mediapipe
 
 stage1:
 	@echo "Running Stage 1 — kinematic baseline + XGBoost ablation..."
-	$(PYTHON) -m experiments.gait_detection.stage1_baselines --config $(CONFIG_STAGE1)
+	$(PYTHON) -m experiments.gait_detection.baselines --config $(CONFIG_STAGE1)
 
 stage2:
 	@echo "Running Stage 2 — TCN hyperparameter search (Optuna)..."
-	$(PYTHON) -m experiments.gait_detection.stage2_optuna --config $(CONFIG_STAGE2)
+	$(PYTHON) -m experiments.gait_detection.tcn_tuning --config $(CONFIG_STAGE2)
 
 stage4:
 	@echo "Running Stage 4 — LOAO cross-validation..."
-	$(PYTHON) -m experiments.gait_detection.stage4_loao_cv --config $(CONFIG_STAGE4)
+	$(PYTHON) -m experiments.gait_detection.tcn_tuning --config $(CONFIG_STAGE4)
 
-xgb-tune:
+stage3:
 	@echo "Running XGBoost hyperparameter tuning..."
-	$(PYTHON) -m experiments.gait_detection.stage_xgb_tune --config $(CONFIG_XGB_TUNE)
+	$(PYTHON) -m experiments.gait_detection.xgb_tuning --config $(CONFIG_STAGE3)
 
-gait-all: stage1 stage2 stage4
+gait-all: stage1 stage2 stage3 stage4
 	@echo "All gait detection experiments complete."
 
 # ── housekeeping ──────────────────────────────────────────────────────────────
