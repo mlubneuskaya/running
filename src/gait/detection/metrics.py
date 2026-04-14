@@ -94,6 +94,41 @@ def timing_error(
     return float(np.mean(errors)) if errors else float("nan")
 
 
+def timing_error_signed(
+    pred_times: np.ndarray,
+    gt_times: np.ndarray,
+) -> float:
+    """Mean signed timing error (pred − gt), using the same greedy matching.
+
+    Positive values mean predictions are systematically late;
+    negative values mean predictions are systematically early.
+
+    Parameters
+    ----------
+    pred_times, gt_times : np.ndarray
+        1D arrays of event times (seconds or ms — same unit).
+
+    Returns
+    -------
+    float
+        Mean signed error, or ``np.nan`` if no matches possible.
+    """
+    if len(pred_times) == 0 or len(gt_times) == 0:
+        return float("nan")
+
+    signed_errors = []
+    used = set()
+    for gt in sorted(gt_times):
+        dists = [(abs(gt - p), i) for i, p in enumerate(pred_times) if i not in used]
+        if not dists:
+            break
+        _, idx = min(dists)
+        used.add(idx)
+        signed_errors.append(pred_times[idx] - gt)
+
+    return float(np.mean(signed_errors)) if signed_errors else float("nan")
+
+
 def confusion_matrix(
     y_true: np.ndarray,
     y_pred: np.ndarray,
@@ -120,7 +155,7 @@ def timing_error_full(
     gt_times_s: np.ndarray,
     fps: float,
 ) -> dict[str, float]:
-    """Mean absolute timing error reported in both milliseconds and frames.
+    """Absolute and signed timing error in milliseconds and frames.
 
     Uses the same greedy nearest-neighbour matching as ``timing_error``.
     Event times must be in **seconds**.
@@ -135,13 +170,19 @@ def timing_error_full(
     Returns
     -------
     dict
-        ``{"ms": float, "frames": float}`` — both are mean absolute errors.
-        Values are ``nan`` when no matches are possible.
+        ``{"ms": float, "frames": float, "signed_ms": float, "signed_frames": float}``.
+        ``ms`` / ``frames`` are mean absolute errors; ``signed_ms`` / ``signed_frames``
+        are mean signed errors (positive = model predicts late, negative = early).
+        All values are ``nan`` when no matches are possible.
     """
-    mae_s = timing_error(pred_times_s, gt_times_s)
+    mae_s    = timing_error(pred_times_s, gt_times_s)
+    signed_s = timing_error_signed(pred_times_s, gt_times_s)
     if np.isnan(mae_s):
-        return {"ms": float("nan"), "frames": float("nan")}
+        return {"ms": float("nan"), "frames": float("nan"),
+                "signed_ms": float("nan"), "signed_frames": float("nan")}
     return {
-        "ms":     mae_s * 1000.0,
-        "frames": mae_s * fps,
+        "ms":            mae_s    * 1000.0,
+        "frames":        mae_s    * fps,
+        "signed_ms":     signed_s * 1000.0,
+        "signed_frames": signed_s * fps,
     }

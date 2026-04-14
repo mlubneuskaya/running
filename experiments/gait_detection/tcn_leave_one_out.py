@@ -29,6 +29,7 @@ from torch.utils.data import DataLoader
 
 import src.gait.detection.dilations as dilation_schedules
 from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.study_utils import load_study, params_from_trial
 from src.gait.detection.metrics import (
     aggregate_confusion_matrices,
     confusion_matrix,
@@ -50,35 +51,6 @@ from src.pose.utils.load_config import load_config
 logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG = "configs/experiments/tcn_leave_one_out.yaml"
-
-_REQUIRED_PARAMS = {"lr", "dropout", "n_blocks", "n_filters", "kernel_size", "dilation_schedule"}
-
-
-# ── study helpers ─────────────────────────────────────────────────────────────
-
-def _load_study(study_cfg: dict, experiment_cfg: ExperimentConfig) -> optuna.Study:
-    storage_type = study_cfg.get("storage_type", "journal")
-    storage_path = os.path.expandvars(study_cfg.get("log", experiment_cfg.optuna_storage))
-    study_name   = study_cfg.get("name", experiment_cfg.study_name)
-
-    if storage_type == "journal":
-        storage = optuna.storages.JournalStorage(
-            optuna.storages.journal.JournalFileBackend(storage_path)
-        )
-    else:
-        storage = storage_path
-
-    return optuna.load_study(study_name=study_name, storage=storage)
-
-
-def _params_from_trial(trial: optuna.trial.FrozenTrial) -> dict:
-    params = trial.params
-    missing = _REQUIRED_PARAMS - params.keys()
-    if missing:
-        raise KeyError(
-            f"Trial #{trial.number} is missing required parameters: {sorted(missing)}"
-        )
-    return params
 
 
 # ── inference ─────────────────────────────────────────────────────────────────
@@ -188,7 +160,12 @@ def run_loao(
             "confusion_matrix": cm.tolist(),
             "training":         train_result,
             "timing_error": {
-                key: {"ms": _mean(timing_errs[key], "ms"), "frames": _mean(timing_errs[key], "frames")}
+                key: {
+                    "ms":            _mean(timing_errs[key], "ms"),
+                    "frames":        _mean(timing_errs[key], "frames"),
+                    "signed_ms":     _mean(timing_errs[key], "signed_ms"),
+                    "signed_frames": _mean(timing_errs[key], "signed_frames"),
+                }
                 for key in timing_errs
             },
         })
@@ -228,7 +205,7 @@ def main(cfg: ExperimentConfig, study_cfg: dict, trial_ids: list[int]) -> None:
     logger.info("%d videos loaded.", len(records))
 
     logger.info("Loading Optuna study …")
-    study = _load_study(study_cfg, cfg)
+    study = load_study(study_cfg, cfg)
     trials_by_id = {t.number: t for t in study.trials}
 
     for trial_id in trial_ids:
@@ -236,7 +213,7 @@ def main(cfg: ExperimentConfig, study_cfg: dict, trial_ids: list[int]) -> None:
             raise KeyError(f"Trial #{trial_id} not found in study '{study.study_name}'.")
 
         trial  = trials_by_id[trial_id]
-        params = _params_from_trial(trial)
+        params = params_from_trial(trial)
         logger.info(
             "Starting LOAO for trial %d  (val_loss=%.4f  %s)",
             trial_id, trial.value, params,
