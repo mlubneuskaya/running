@@ -13,12 +13,13 @@ CONFIG_STAGE2   := ./configs/experiments/tcn_tuning.yaml
 CONFIG_STAGE3   := ./configs/experiments/xgb_tuning.yaml
 CONFIG_STAGE4   := ./configs/experiments/tcn_leave_one_out.yaml
 CONFIG_STAGE5    := ./configs/experiments/tcn_training.yaml
+CONFIG_INFER    := ./configs/experiments/tcn_inference.yaml
 
 YOLO_OUTPUT_DIR := ./data/output/yolo/overlays
 MEDIAPIPE_OUTPUT_DIR := ./data/output/mediapipe/overlays
 
 .PHONY: help setup process-yolo process-mp overlay visualize all clean \
-        stage1 stage2 stage4 xgb-tune train gait-all
+        stage1 stage2 stage4 xgb-tune train infer gait-all
 
 help:
 	@echo "Available commands:"
@@ -37,6 +38,7 @@ help:
 	@echo "    make stage4         - Full LOAO cross-validation"
 	@echo "    make train          - Final training on selected Optuna trials"
 	@echo "    make xgb-tune       - XGBoost hyperparameter tuning (Optuna)"
+	@echo "    make infer          - Run TCN inference, save per-record softmax .npy files"
 	@echo "    make gait-all       - Run stage1 → stage2 → stage4 sequentially"
 	@echo ""
 	@echo "    make clean          - Remove pycache and temporary files"
@@ -88,6 +90,10 @@ stage4:
 stage5:
 	@echo "Running final training on selected trials..."
 	$(PYTHON) -m experiments.gait_detection.tcn_training --config $(CONFIG_STAGE5)
+
+infer:
+	@echo "Running TCN inference..."
+	$(PYTHON) -m experiments.gait_detection.tcn_inference --config $(CONFIG_INFER)
 
 gait-all: stage1 stage2 stage3 stage4 stage5
 	@echo "All gait detection experiments complete."
