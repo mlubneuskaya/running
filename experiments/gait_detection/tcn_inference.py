@@ -36,7 +36,7 @@ import src.gait.detection.dilations as dilation_schedules
 from experiments.gait_detection.config import ExperimentConfig
 from experiments.gait_detection.study_utils import load_study, params_from_trial
 from src.gait.detection.model import TCN
-from src.gait.gait_data.dataset import load_dataset
+from src.gait.gait_data.dataset import load_dataset, train_test_split
 from src.pose.utils.load_config import load_config
 
 logger = logging.getLogger(__name__)
@@ -76,8 +76,14 @@ def main(
     os.makedirs(output_dir, exist_ok=True)
 
     logger.info("Loading dataset …")
-    records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
-    logger.info("%d records loaded.", len(records))
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    logger.info("%d records loaded.", len(all_records))
+
+    train_records, test_records, test_athletes = train_test_split(all_records)
+    logger.info(
+        "Split: %d train records, %d test records (%s).",
+        len(train_records), len(test_records), test_athletes,
+    )
 
     logger.info("Loading Optuna study …")
     study        = load_study(study_cfg, cfg)
@@ -124,28 +130,32 @@ def main(
         "n_classes":      cfg.n_classes,
         "class_names":    cfg.class_names,
         "fps":            cfg.fps,
+        "test_athletes":  test_athletes,
         "records":        [],
     }
 
-    for rec in records:
-        probs    = _run(model, rec.features, cfg.feature_idx, device)
-        out_name = _safe_stem(rec.video_path) + ".npy"
-        out_path = os.path.join(output_dir, out_name)
-        np.save(out_path, probs)
+    for split, split_records in [("train", train_records), ("test", test_records)]:
+        for rec in split_records:
+            probs    = _run(model, rec.features, cfg.feature_idx, device)
+            out_name = _safe_stem(rec.video_path) + ".npy"
+            out_path = os.path.join(output_dir, out_name)
+            np.save(out_path, probs)
 
-        manifest["records"].append({
-            "video_path": rec.video_path,
-            "athlete":    rec.athlete,
-            "n_frames":   int(probs.shape[0]),
-            "probs_path": out_path,
-        })
-        logger.info("  %s  →  %s  (%d frames)", rec.athlete, out_name, probs.shape[0])
+            manifest["records"].append({
+                "video_path": rec.video_path,
+                "athlete":    rec.athlete,
+                "split":      split,
+                "n_frames":   int(probs.shape[0]),
+                "probs_path": out_path,
+            })
+            logger.info("  [%s] %s  →  %s  (%d frames)", split, rec.athlete, out_name, probs.shape[0])
 
     manifest_path = os.path.join(output_dir, "manifest.json")
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2)
     logger.info("Manifest saved to %s", manifest_path)
-    logger.info("Done — %d records written to %s", len(records), output_dir)
+    logger.info("Done — %d train + %d test records written to %s",
+                len(train_records), len(test_records), output_dir)
 
 
 if __name__ == "__main__":

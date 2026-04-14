@@ -45,6 +45,7 @@ from src.gait.gait_data.dataset import (
     compute_class_weights,
     load_dataset,
     loao_splits,
+    train_test_split,
 )
 from src.pose.utils.load_config import load_config
 
@@ -201,8 +202,14 @@ def run_loao(
 
 def main(cfg: ExperimentConfig, study_cfg: dict, trial_ids: list[int]) -> None:
     logger.info("Loading dataset …")
-    records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
-    logger.info("%d videos loaded.", len(records))
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    logger.info("%d videos loaded.", len(all_records))
+
+    records, test_records, test_athletes = train_test_split(all_records)
+    logger.info(
+        "Test set excluded from LOAO: %s (%d videos). Training on %d videos.",
+        test_athletes, len(test_records), len(records),
+    )
 
     logger.info("Loading Optuna study …")
     study = load_study(study_cfg, cfg)

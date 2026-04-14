@@ -32,7 +32,7 @@ from experiments.gait_detection.config import ExperimentConfig
 from experiments.gait_detection.study_utils import load_study, params_from_trial
 from src.gait.detection.model import TCN
 from src.gait.detection.train import train_epoch, get_device
-from src.gait.gait_data.dataset import load_dataset, compute_class_weights, GaitWindowDataset
+from src.gait.gait_data.dataset import load_dataset, compute_class_weights, GaitWindowDataset, train_test_split
 from src.pose.utils.load_config import load_config
 
 logger = logging.getLogger(__name__)
@@ -133,8 +133,14 @@ def main(
     log_every: int = 10,
 ) -> None:
     logger.info("Loading dataset …")
-    records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
-    logger.info("%d videos loaded.", len(records))
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    logger.info("%d videos loaded.", len(all_records))
+
+    records, test_records, test_athletes = train_test_split(all_records)
+    logger.info(
+        "Test set excluded from training: %s (%d videos). Training on %d videos.",
+        test_athletes, len(test_records), len(records),
+    )
 
     logger.info("Loading Optuna study …")
     study = load_study(study_cfg, cfg)

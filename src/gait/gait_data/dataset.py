@@ -299,6 +299,38 @@ class GaitSequenceDataset(Dataset):
 
 # ── splits ───────────────────────────────────────────────────────────────────
 
+_TEST_SPLIT_SEED     = 42
+_TEST_SPLIT_FRACTION = 0.10
+
+
+def train_test_split(
+    records: list[VideoRecord],
+) -> tuple[list[VideoRecord], list[VideoRecord], list[str]]:
+    """Randomly split records into train and test sets at the athlete level.
+
+    The split is fully deterministic: athlete list is sorted before sampling so
+    adding new videos for existing athletes never changes which athletes end up
+    in the test set.  Test size = floor(n_athletes * 0.10).
+
+    Returns
+    -------
+    (train_records, test_records, test_athletes)
+    """
+    athletes = sorted({r.athlete for r in records})
+    n_test   = int(len(athletes) * _TEST_SPLIT_FRACTION)
+    if n_test == 0:
+        raise ValueError(
+            f"Dataset has {len(athletes)} athletes; "
+            f"floor({len(athletes)} × {_TEST_SPLIT_FRACTION}) = 0 test athletes."
+        )
+    rng          = np.random.default_rng(_TEST_SPLIT_SEED)
+    test_athletes = sorted(rng.choice(athletes, n_test, replace=False).tolist())
+    test_set      = set(test_athletes)
+    train = [r for r in records if r.athlete not in test_set]
+    test  = [r for r in records if r.athlete in test_set]
+    return train, test, test_athletes
+
+
 def loao_splits(records: list[VideoRecord]) -> Iterator[tuple[list[VideoRecord], list[VideoRecord], str]]:
     """Leave-one-athlete-out cross-validation splits.
 
