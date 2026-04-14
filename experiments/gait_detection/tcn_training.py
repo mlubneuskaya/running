@@ -20,7 +20,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 
 import optuna
 import torch
@@ -29,6 +28,7 @@ from torch.utils.data import DataLoader
 
 import src.gait.detection.dilations as dilation_schedules
 from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.study_utils import load_study, params_from_trial
 from src.gait.detection.model import TCN
 from src.gait.detection.train import train_epoch, get_device
 from src.gait.gait_data.dataset import load_dataset, compute_class_weights, GaitWindowDataset
@@ -37,33 +37,6 @@ from src.pose.utils.load_config import load_config
 logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG = "configs/experiments/tcn_training.yaml"
-
-_REQUIRED_PARAMS = {"lr", "dropout", "n_blocks", "n_filters", "kernel_size", "dilation_schedule"}
-
-
-def _load_study(study_cfg: dict, experiment_cfg: ExperimentConfig) -> optuna.Study:
-    storage_type = study_cfg.get("storage_type", "journal")
-    storage_path = os.path.expandvars(study_cfg.get("log", experiment_cfg.optuna_storage))
-    study_name   = study_cfg.get("name", experiment_cfg.study_name)
-
-    if storage_type == "journal":
-        storage = optuna.storages.JournalStorage(
-            optuna.storages.journal.JournalFileBackend(storage_path)
-        )
-    else:
-        storage = storage_path
-
-    return optuna.load_study(study_name=study_name, storage=storage)
-
-
-def _params_from_trial(trial: optuna.trial.FrozenTrial) -> dict:
-    params = trial.params
-    missing = _REQUIRED_PARAMS - params.keys()
-    if missing:
-        raise KeyError(
-            f"Trial #{trial.number} is missing required parameters: {sorted(missing)}"
-        )
-    return params
 
 
 def train_trial(
@@ -133,7 +106,7 @@ def main(
     logger.info("%d videos loaded.", len(records))
 
     logger.info("Loading Optuna study …")
-    study = _load_study(study_cfg, cfg)
+    study = load_study(study_cfg, cfg)
     trials_by_id = {t.number: t for t in study.trials}
 
     results = []
@@ -141,7 +114,7 @@ def main(
         if trial_id not in trials_by_id:
             raise KeyError(f"Trial #{trial_id} not found in study '{study.study_name}'.")
         trial  = trials_by_id[trial_id]
-        params = _params_from_trial(trial)
+        params = params_from_trial(trial)
         logger.info(
             "Training trial %d  (val_loss=%.4f  dilation=%s  n_blocks=%d  n_filters=%d  kernel=%d)",
             trial_id, trial.value, params["dilation_schedule"],
