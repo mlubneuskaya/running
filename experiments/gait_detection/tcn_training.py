@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 
 import optuna
 import torch
@@ -37,6 +38,36 @@ from src.pose.utils.load_config import load_config
 logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG = "configs/experiments/tcn_training.yaml"
+
+
+def epochs_from_loao(trial_id: int, loao_dir: str) -> int:
+    """Return the mean best_epoch across LOAO folds for this trial."""
+    path = os.path.join(loao_dir, f"loao_trial_{trial_id}.json")
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"LOAO JSON not found for trial {trial_id}: {path}\n"
+            f"Run stage 4 (tcn_leave_one_out) for this trial first."
+        )
+
+    with open(path) as f:
+        data = json.load(f)
+
+    best_epochs = [
+        fold["training"]["best_epoch"]
+        for fold in data["folds"]
+        if fold["training"]["best_epoch"] is not None
+    ]
+    if not best_epochs:
+        raise ValueError(
+            f"No best_epoch data found in LOAO folds for trial {trial_id}."
+        )
+
+    n_epochs = int(round(sum(best_epochs) / len(best_epochs)))
+    logger.info(
+        "Trial %d  LOAO best_epoch: mean=%d  (folds: %s)",
+        trial_id, n_epochs, best_epochs,
+    )
+    return n_epochs
 
 
 def train_trial(
@@ -98,7 +129,7 @@ def main(
     cfg: ExperimentConfig,
     study_cfg: dict,
     trial_ids: list[int],
-    max_epochs: int,
+    loao_dir: str,
     log_every: int = 10,
 ) -> None:
     logger.info("Loading dataset …")
@@ -120,6 +151,7 @@ def main(
             trial_id, trial.value, params["dilation_schedule"],
             params["n_blocks"], params["n_filters"], params["kernel_size"],
         )
+        max_epochs = epochs_from_loao(trial_id, loao_dir)
         result = train_trial(trial_id, params, records, cfg, max_epochs, log_every)
         results.append(result)
 
@@ -142,16 +174,18 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     raw = load_config(args.config)
 
-    cfg        = ExperimentConfig(**raw.get("experiment", {}))
-    study_cfg  = raw.get("study", {})
-    trial_ids  = raw.get("trial_ids", [])
-    max_epochs = raw.get("max_epochs", 300)
-    log_every  = raw.get("log_every", 10)
+    cfg       = ExperimentConfig(**raw.get("experiment", {}))
+    study_cfg = raw.get("study", {})
+    trial_ids = raw.get("trial_ids", [])
+    loao_dir  = raw.get("loao_dir")
+    log_every = raw.get("log_every", 10)
 
     if not trial_ids:
         raise ValueError("'trial_ids' is empty or missing in the config.")
     if not study_cfg:
         raise ValueError("'study' section is missing in the config.")
+    if not loao_dir:
+        raise ValueError("'loao_dir' is missing in the config.")
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    main(cfg, study_cfg, trial_ids, max_epochs, log_every)
+    main(cfg, study_cfg, trial_ids, loao_dir, log_every)
