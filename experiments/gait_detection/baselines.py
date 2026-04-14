@@ -37,7 +37,7 @@ from src.gait.detection.detectors import KinematicDetector
 from src.pose.utils.load_config import load_config
 from src.gait.detection.metrics import timing_error_full, per_class_f1, confusion_matrix
 from src.gait.detection.postprocess import derive_events
-from src.gait.gait_data.dataset import tuning_split, load_dataset
+from src.gait.gait_data.dataset import tuning_split, load_dataset, train_test_split
 
 
 # ── feature group slices (indices into the 22-feature vector) ────────────────
@@ -157,7 +157,8 @@ def main(cfg: ExperimentConfig | None = None) -> None:
     all_results = {}
 
     cfg = cfg or ExperimentConfig()
-    records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    records, _, _ = train_test_split(all_records)
 
     train_records, val_records = tuning_split(
         records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.tuning_seed

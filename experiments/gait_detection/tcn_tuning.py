@@ -34,7 +34,7 @@ import src.gait.detection.dilations as dilation_schedules
 from src.gait.detection.model import TCN
 from src.gait.detection.train import TrainerConfig, Trainer
 from src.gait.gait_data.dataset import compute_class_weights, GaitWindowDataset, GaitSequenceDataset, load_dataset, \
-    tuning_split
+    tuning_split, train_test_split
 from src.pose.utils.load_config import load_config
 
 DEFAULT_CONFIG = "configs/experiments/tcn_tuning.yaml"
@@ -103,7 +103,9 @@ def objective(trial, train_records, val_records, cfg: ExperimentConfig, search_s
 
 
 def main(cfg: ExperimentConfig, storage: str | None, n_trials: int, search_space: dict) -> None:
-    records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    records, _, test_athletes = train_test_split(all_records)
+    logger.info("Test athletes excluded from tuning: %s", test_athletes)
     train_records, val_records = tuning_split(
         records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.tuning_seed
     )

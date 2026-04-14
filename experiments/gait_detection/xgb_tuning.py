@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 from experiments.gait_detection.config import ExperimentConfig
 from src.gait.detection.metrics import per_class_f1
-from src.gait.gait_data.dataset import load_dataset, tuning_split
+from src.gait.gait_data.dataset import load_dataset, tuning_split, train_test_split
 from src.pose.utils.load_config import load_config
 
 
@@ -78,7 +78,8 @@ def objective(
 def main(cfg: ExperimentConfig | None = None, n_trials: int = 50) -> None:
     cfg = cfg or ExperimentConfig()
 
-    records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    records, _, _ = train_test_split(all_records)
     train_records, val_records = tuning_split(
         records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.tuning_seed
     )
