@@ -28,6 +28,7 @@ import logging
 import os
 import re
 
+import optuna
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -166,13 +167,30 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     raw = load_config(args.config)
 
-    cfg        = ExperimentConfig(**raw.get("experiment", {}))
-    study_cfg  = raw.get("study", {})
-    trial_id   = raw.get("trial_id")
-    output_dir = raw.get("output_dir", "data/output/experiments/gait/tcn/predictions")
+    cfg           = ExperimentConfig(**raw.get("experiment", {}))
+    study_cfg     = raw.get("study", {})
+    trial_id      = raw.get("trial_id")
+    training_json = raw.get("training_json")
+    output_dir    = raw.get("output_dir", "data/output/gait/stage6")
 
     if trial_id is None:
-        raise ValueError("'trial_id' is missing in the config.")
+        if training_json:
+            with open(training_json) as _f:
+                _tr = json.load(_f)
+            _entry   = _tr["models"][0]
+            trial_id = _entry["trial_id"]
+            # Override the checkpoint dir so the script finds the right .pt file
+            cfg.checkpoint_dir = os.path.dirname(_entry["checkpoint"])
+            logger.info(
+                "Auto-selected trial %d, checkpoint dir %s from %s",
+                trial_id, cfg.checkpoint_dir, training_json,
+            )
+        else:
+            raise ValueError(
+                "'trial_id' is missing and 'training_json' is not set. "
+                "Either specify 'trial_id' or point 'training_json' at the "
+                "stage5 training.json file."
+            )
     if not study_cfg:
         raise ValueError("'study' section is missing in the config.")
 

@@ -200,7 +200,8 @@ def run_loao(
 
 # ── entry point ───────────────────────────────────────────────────────────────
 
-def main(cfg: ExperimentConfig, study_cfg: dict, trial_ids: list[int]) -> None:
+def main(cfg: ExperimentConfig, study_cfg: dict, trial_ids: list[int],
+         auto_mode: bool = False) -> None:
     logger.info("Loading dataset …")
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     logger.info("%d videos loaded.", len(all_records))
@@ -227,7 +228,10 @@ def main(cfg: ExperimentConfig, study_cfg: dict, trial_ids: list[int]) -> None:
         )
 
         summary  = run_loao(trial_id, params, records, cfg)
-        out_path = cfg.results_path(f"loao_trial_{trial_id}")
+        # In auto mode (single best trial from pipeline) write a stable loao.json
+        # so downstream stages have a predictable dependency path.
+        out_name = "loao" if auto_mode and len(trial_ids) == 1 else f"loao_trial_{trial_id}"
+        out_path = cfg.results_path(out_name)
         with open(out_path, "w") as f:
             json.dump(summary, f, indent=2)
         logger.info("Results saved to %s", out_path)
@@ -241,14 +245,25 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     raw = load_config(args.config)
 
-    cfg       = ExperimentConfig(**raw.get("experiment", {}))
-    study_cfg = raw.get("study", {})
-    trial_ids = raw.get("trial_ids", [])
+    cfg              = ExperimentConfig(**raw.get("experiment", {}))
+    study_cfg        = raw.get("study", {})
+    trial_ids        = raw.get("trial_ids", [])
+    best_params_json = raw.get("best_params_json")
 
     if not trial_ids:
-        raise ValueError("'trial_ids' is empty or missing in the config.")
+        if best_params_json:
+            with open(best_params_json) as _f:
+                _bp = json.load(_f)
+            trial_ids = [_bp["best_trial_id"]]
+            logger.info("Auto-selected trial %d from %s", trial_ids[0], best_params_json)
+        else:
+            raise ValueError(
+                "'trial_ids' is empty and 'best_params_json' is not set. "
+                "Either list trial IDs in the config or point 'best_params_json' "
+                "at the stage2 best_params.json file."
+            )
     if not study_cfg:
         raise ValueError("'study' section is missing in the config.")
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    main(cfg, study_cfg, trial_ids)
+    main(cfg, study_cfg, trial_ids, auto_mode=bool(best_params_json))

@@ -180,14 +180,25 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     raw = load_config(args.config)
 
-    cfg       = ExperimentConfig(**raw.get("experiment", {}))
-    study_cfg = raw.get("study", {})
-    trial_ids = raw.get("trial_ids", [])
-    loao_dir  = raw.get("loao_dir")
-    log_every = raw.get("log_every", 10)
+    cfg              = ExperimentConfig(**raw.get("experiment", {}))
+    study_cfg        = raw.get("study", {})
+    trial_ids        = raw.get("trial_ids", [])
+    best_params_json = raw.get("best_params_json")
+    loao_dir         = raw.get("loao_dir")
+    log_every        = raw.get("log_every", 10)
 
     if not trial_ids:
-        raise ValueError("'trial_ids' is empty or missing in the config.")
+        if best_params_json:
+            with open(best_params_json) as _f:
+                _bp = json.load(_f)
+            trial_ids = [_bp["best_trial_id"]]
+            logger.info("Auto-selected trial %d from %s", trial_ids[0], best_params_json)
+        else:
+            raise ValueError(
+                "'trial_ids' is empty and 'best_params_json' is not set. "
+                "Either list trial IDs or point 'best_params_json' at the "
+                "stage2 best_params.json file."
+            )
     if not study_cfg:
         raise ValueError("'study' section is missing in the config.")
     if not loao_dir:

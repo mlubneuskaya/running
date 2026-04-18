@@ -125,8 +125,12 @@ def main(cfg: ExperimentConfig, storage: str | None, n_trials: int, search_space
     )
 
 
-    out = {"best_params": study.best_params, "best_val_loss": study.best_value}
-    out_path = cfg.results_path("stage2_best_params")
+    out = {
+        "best_trial_id": study.best_trial.number,
+        "best_params":   study.best_params,
+        "best_val_loss": study.best_value,
+    }
+    out_path = cfg.results_path("best_params")
     with open(out_path, "w") as f:
         json.dump(out, f, indent=2)
 
