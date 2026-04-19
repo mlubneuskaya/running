@@ -1,7 +1,5 @@
 import pandas as pd
 
-from src.pose.model_comparison.aggregate_results import expand_lists_to_cols
-
 
 def count_detection_gaps(df_coords, keypoints):
     is_row_complete = df_coords.notna().all(axis=1)
@@ -29,26 +27,3 @@ def count_detection_gaps(df_coords, keypoints):
     df = df.rename(columns={"index": "keypoint"})
     df["total_detected_frames"] = total_detected_frames
     return df
-
-#
-# def aggregate_gaps_across_videos(video_dfs, model_name="Model_A"):
-#     total_internal_empty = 0
-#
-#     combined_lost_counts = {}
-#
-#     for df_video in video_dfs:
-#         df_coords = expand_lists_to_cols(df_video)
-#
-#         video_stats = count_detection_gaps(df_coords, keypoints=[])
-#
-#         total_internal_empty += video_stats["internal_empty_rows"]
-#
-#         for kp, count in video_stats["lost_per_kp"].items():
-#             combined_lost_counts[kp] = combined_lost_counts.get(kp, 0) + count
-#
-#     return {
-#         "model_name": model_name,
-#         "total_internal_empty_rows": total_internal_empty,
-#         "total_lost_per_kp": combined_lost_counts,
-#         "video_count": len(video_dfs),
-#     }

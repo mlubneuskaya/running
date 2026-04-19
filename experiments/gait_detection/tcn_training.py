@@ -111,7 +111,7 @@ def train_trial(
         if epoch % log_every == 0:
             logger.info("Trial %d  Epoch %3d/%d  train=%.4f", trial_id, epoch, max_epochs, loss)
 
-    ckpt_path = cfg.checkpoint_path(f"trial_{trial_id}")
+    ckpt_path = cfg.checkpoint_path(f"checkpoint")
     torch.save(model.state_dict(), ckpt_path)
     logger.info("Trial %d  saved → %s", trial_id, ckpt_path)
 

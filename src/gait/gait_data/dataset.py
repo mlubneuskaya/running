@@ -63,7 +63,7 @@ def _pose_path(video_path: str) -> str:
     # video_path is like  data/input/optojump/study_N/athlete_M.mov
     # pose JSON is at     data/output/tuned_yolo/000332/optojump/study_N/athlete_M.json
     rel = os.path.relpath(base, "data/input/optojump")
-    return os.path.join("data/output/tuned_yolo/000332/optojump", rel + ".json")
+    return os.path.join("data/output/pose/tuned_yolo/000332/optojump", rel + ".json")  # TODO make model id independent
 
 
 _KEYPOINTS = [

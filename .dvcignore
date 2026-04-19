@@ -1,0 +1,24 @@
+# DVC ignore file — patterns listed here are excluded from DVC tracking.
+# Syntax is the same as .gitignore.
+
+# Python caches
+**/__pycache__
+**/*.pyc
+**/*.pyo
+
+# Jupyter checkpoints
+**/.ipynb_checkpoints
+
+# Optuna / Ray Tune internal artefacts that grow unboundedly
+# (the journal log is tracked but not cached; tune artefacts are not tracked)
+data/output/hyperparameter_tuning/
+data/output/experiments/gait/tcn/study.log
+
+# Overlay videos and raw pose overlays
+data/output/tuned_yolo_overlays/
+data/output/yolo/overlays/
+data/output/mediapipe/overlays/
+
+# OS / editor noise
+.DS_Store
+*.swp

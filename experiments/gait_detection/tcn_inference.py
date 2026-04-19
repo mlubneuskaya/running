@@ -112,7 +112,7 @@ def main(
         dilations=dilations,
     )
 
-    ckpt_path = cfg.checkpoint_path(f"trial_{trial_id}")
+    ckpt_path = cfg.checkpoint_path(f"checkpoint")
     if not os.path.exists(ckpt_path):
         raise FileNotFoundError(
             f"Checkpoint not found: {ckpt_path}\n"
@@ -139,7 +139,9 @@ def main(
         for rec in split_records:
             probs    = _run(model, rec.features, cfg.feature_idx, device)
             out_name = _safe_stem(rec.video_path) + ".npy"
-            out_path = os.path.join(output_dir, out_name)
+            probs_dir = os.path.join(output_dir, 'probs')
+            os.makedirs(probs_dir, exist_ok=True)
+            out_path = os.path.join(probs_dir, out_name)
             np.save(out_path, probs)
 
             manifest["records"].append({
