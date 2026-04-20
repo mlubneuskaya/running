@@ -34,16 +34,15 @@ ENV/
 env.bak/
 venv.bak/
 
-data/
-configs/
 jobs/
 output/
 runs/
 notebooks_drafts/
 gait/
+data/logs
 
 models/*
-*.pt
+
 
 .ipynb_checkpoints
 
@@ -59,3 +58,4 @@ models/*
 /.claude/
 /hpc/
 /notebooks/drafts/
+/configs

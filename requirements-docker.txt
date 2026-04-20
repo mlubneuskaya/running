@@ -14,11 +14,11 @@ pillow==12.1.0
 
 # Experiment tracking
 optuna==4.8.0
-mlflow==2.22.1
+mlflow==3.11.1
 ray[tune]==2.54.0
 
 # Data
-pandas==3.0.0
+pandas==2.3.3
 pyarrow==23.0.1
 
 # Pipeline

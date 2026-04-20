@@ -1,0 +1,6 @@
+outs:
+- md5: 978f1cfe03de50b240cbd48878bcab1b.dir
+  size: 133004081
+  nfiles: 26
+  hash: md5
+  path: yolo26l_tune4

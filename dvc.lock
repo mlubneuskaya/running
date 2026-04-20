@@ -112,9 +112,9 @@ stages:
       nfiles: 8
     - path: data/models/yolo/tuned/
       hash: md5
-      md5: 3f8b82d4ccaf36a21a0aaadd8dadeedf.dir
-      size: 688979934
-      nfiles: 115
+      md5: 8ef9e00036b75c51fb7458fc59cfd041.dir
+      size: 568841496
+      nfiles: 114
     - path: scripts/run_pose_detection.py
       hash: md5
       md5: f24f9462db313ffc933979e1d33d0036

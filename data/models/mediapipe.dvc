@@ -1,0 +1,6 @@
+outs:
+- md5: 8e11d2a450b5cf2f77efd6f5687f5e0d.dir
+  size: 106305698
+  nfiles: 5
+  hash: md5
+  path: mediapipe
