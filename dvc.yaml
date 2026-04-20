@@ -234,6 +234,9 @@ stages:
       - data/output/gait/stage2/study.log
       - data/output/gait/stage2/best_params.json
       - data/output/gait/stage4/results
+      - data/output/gait/image/stage2/study.log
+      - data/output/gait/image/stage2/best_params.json
+      - data/output/gait/image/stage4/
     outs:
       - data/output/gait/notebooks/analyze_optuna_study.ipynb:
           cache: false
@@ -250,6 +253,8 @@ stages:
       - data/output/gait/stage3/best_params.json
       - data/output/gait/stage6/manifest.json
       - data/output/gait/stage6/probs/
+      - data/output/gait/image/stage6/manifest.json
+      - data/output/gait/image/stage6/probs/
     outs:
       - data/output/gait/notebooks/compare_kinematic_xgboost.ipynb:
           cache: false
@@ -265,6 +270,117 @@ stages:
       - src/gait/detection/metrics.py
       - data/output/gait/stage6/manifest.json
       - data/output/gait/stage6/probs/
+      - data/output/gait/image/stage6/manifest.json
+      - data/output/gait/image/stage6/probs/
     outs:
       - data/output/gait/notebooks/compare_postprocessing.ipynb:
           cache: false
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # IMAGE PIPELINE  (CNN backbone + TCN, parallel to pose pipeline)
+  # ════════════════════════════════════════════════════════════════════════════
+
+  # ── Stage I — extract per-frame CNN features from video crops ────────────────
+  img_feature_extract:
+    cmd: python -m experiments.gait_detection.img_feature_extract --config configs/experiments/img_feature_extract.yaml
+    deps:
+      - experiments/gait_detection/img_feature_extract.py
+      - src/gait/image/extractor.py
+      - configs/experiments/img_feature_extract.yaml
+      - data/input/optojump/
+      - data/output/pose/optojump/
+    params:
+      - configs/experiments/img_feature_extract.yaml:
+          - backbone
+          - img_size
+          - bbox_padding
+    outs:
+      - data/output/gait/image_features/
+
+  # ── Stage II — per-frame MLP baseline (validates backbone features) ───────────
+  img_baselines:
+    cmd: python -m experiments.gait_detection.img_baselines --config configs/experiments/img_baselines.yaml
+    deps:
+      - experiments/gait_detection/img_baselines.py
+      - src/gait/image/dataset.py
+      - data/output/gait/image_features/
+      - data/output/annotations/optojump/ml_training_dataset.csv
+    metrics:
+      - data/output/gait/image/stage1/results.json:
+          cache: false
+
+  # ── Stage III — TCN hyperparameter search (Optuna + MLflow) ─────────────────
+  img_tcn_tune:
+    cmd: python -m experiments.gait_detection.img_tcn_tune --config configs/experiments/img_tcn_tuning.yaml
+    deps:
+      - experiments/gait_detection/img_tcn_tune.py
+      - src/gait/image/dataset.py
+      - src/gait/detection/model.py
+      - src/gait/detection/train.py
+      - configs/experiments/img_tcn_tuning.yaml
+      - data/output/gait/image_features/
+      - data/output/annotations/optojump/ml_training_dataset.csv
+    params:
+      - configs/experiments/img_tcn_tuning.yaml:
+          - optuna.n_trials
+          - experiment.n_val_athletes_tuning
+          - search_space
+    outs:
+      - data/output/gait/image/stage2/best_params.json
+      - data/output/gait/image/stage2/study.log:
+          cache: false
+
+  # ── Stage IV — LOAO cross-validation (MLflow per fold) ───────────────────────
+  img_tcn_loao:
+    cmd: python -m experiments.gait_detection.img_tcn_loao --config configs/experiments/img_tcn_leave_one_out.yaml
+    deps:
+      - experiments/gait_detection/img_tcn_loao.py
+      - src/gait/image/dataset.py
+      - src/gait/detection/model.py
+      - src/gait/detection/train.py
+      - data/output/gait/image/stage2/best_params.json
+      - data/output/gait/image_features/
+      - data/output/annotations/optojump/ml_training_dataset.csv
+    params:
+      - configs/experiments/img_tcn_leave_one_out.yaml:
+          - experiment.max_epochs
+          - experiment.early_stopping_patience
+          - experiment.batch_size
+    outs:
+      - data/output/gait/image/stage4/
+
+  # ── Stage V — final training on all train athletes ────────────────────────────
+  img_tcn_train:
+    cmd: python -m experiments.gait_detection.img_tcn_train --config configs/experiments/img_tcn_training.yaml
+    deps:
+      - experiments/gait_detection/img_tcn_train.py
+      - src/gait/image/dataset.py
+      - src/gait/detection/model.py
+      - src/gait/detection/train.py
+      - data/output/gait/image/stage2/best_params.json
+      - data/output/gait/image/stage4/
+      - data/output/gait/image_features/
+      - data/output/annotations/optojump/ml_training_dataset.csv
+    params:
+      - configs/experiments/img_tcn_training.yaml:
+          - experiment.batch_size
+          - log_every
+    outs:
+      - data/output/gait/image/stage5/
+
+  # ── Stage VI — inference: save per-record softmax probabilities ──────────────
+  img_tcn_infer:
+    cmd: python -m experiments.gait_detection.img_tcn_infer --config configs/experiments/img_tcn_inference.yaml
+    deps:
+      - experiments/gait_detection/img_tcn_infer.py
+      - src/gait/image/dataset.py
+      - src/gait/detection/model.py
+      - data/output/gait/image/stage5/
+      - data/output/gait/image_features/
+      - data/output/annotations/optojump/ml_training_dataset.csv
+    params:
+      - configs/experiments/img_tcn_inference.yaml:
+          - experiment.n_classes
+    outs:
+      - data/output/gait/image/stage6/manifest.json
+      - data/output/gait/image/stage6/probs/

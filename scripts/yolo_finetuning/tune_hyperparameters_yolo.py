@@ -7,10 +7,6 @@ import os
 from ultralytics import YOLO, settings
 from ray import tune
 
-settings.update(
-    {"datasets_dir": "/net/pr2/projects/plgrid/plggrecontext/maria/running/"}
-)
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -36,6 +32,9 @@ def main():
 
     tune_args = config.get("tune_args", {})
     model_path = tune_args.pop("model")
+
+    datasets_dir = config.get("datasets_dir", os.getcwd())
+    settings.update({"datasets_dir": datasets_dir})
 
     train_args = config.get("train_args", {})
     if "data" in train_args:
