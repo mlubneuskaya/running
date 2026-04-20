@@ -1,0 +1,37 @@
+# Core ML
+torch==2.9.1
+torchvision==0.24.1
+numpy==2.4.1
+scipy==1.17.0
+scikit-learn==1.8.0
+xgboost==3.2.0
+
+# Vision / pose
+ultralytics==8.4.8
+opencv-python-headless==4.13.0.90
+mediapipe==0.10.32
+pillow==12.1.0
+
+# Experiment tracking
+optuna==4.8.0
+mlflow==2.22.1
+ray[tune]==2.54.0
+
+# Data
+pandas==3.0.0
+pyarrow==23.0.1
+
+# Pipeline
+dvc==3.67.1
+papermill==2.7.0
+
+# Visualisation (notebooks / reports)
+matplotlib==3.10.8
+seaborn==0.13.2
+plotly==6.5.2
+
+# Utilities
+PyYAML==6.0.3
+tqdm==4.67.3
+joblib==1.5.3
+SQLAlchemy==2.0.49
