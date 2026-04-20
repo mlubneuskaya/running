@@ -109,8 +109,7 @@ stages:
           - experiment.feature_idx
           - experiment.n_val_athletes_tuning
     metrics:
-      - data/output/gait/stage1/results.json:
-          cache: false
+      - data/output/gait/stage1/results.json
 
   # ── Stage 2 — TCN hyperparameter search (Optuna, parallelisable) ─────────────
   stage2_tcn_tune:
@@ -129,8 +128,7 @@ stages:
           - search_space
     outs:
       - data/output/gait/stage2/best_params.json
-      - data/output/gait/stage2/study.log:
-          cache: false
+      - data/output/gait/stage2/study.log
 
   # ── Stage 3 — XGBoost hyperparameter tuning (independent of TCN) ─────────────
   stage3_xgb_tune:

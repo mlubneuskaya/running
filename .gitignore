@@ -35,11 +35,14 @@ env.bak/
 venv.bak/
 
 jobs/
-output/
 runs/
-notebooks_drafts/
-gait/
 data/logs
+data/output/yolo/overlays
+data/output/tuned_yolo_overlays
+data/output/experiments
+data/output/plots
+data/output/pose/notebooks
+data/output/gait/notebooks
 
 models/*
 
@@ -57,5 +60,4 @@ models/*
 /bash/
 /.claude/
 /hpc/
-/notebooks/drafts/
 /configs

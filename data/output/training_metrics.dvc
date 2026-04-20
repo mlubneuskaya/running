@@ -1,0 +1,6 @@
+outs:
+- md5: a1ad4512cfa30a415bdf837bdc9643a9.dir
+  size: 234296
+  nfiles: 4
+  hash: md5
+  path: training_metrics

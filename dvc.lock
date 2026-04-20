@@ -617,9 +617,9 @@ stages:
       size: 1902774
     - path: data/output/gait/stage5/
       hash: md5
-      md5: 84abcd32903aca679123beaf9e0e8b26.dir
-      size: 1933109
-      nfiles: 2
+      md5: 6bb2e2182adc63ab8dfa62d316461628.dir
+      size: 1933139
+      nfiles: 3
     - path: data/output/pose/tuned_yolo/
       hash: md5
       md5: 7b91b6755a75a437ca7c5d07aaea4d2e.dir
