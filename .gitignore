@@ -36,6 +36,8 @@ venv.bak/
 
 jobs/
 runs/
+logs/
+data/coco-wholebody
 data/logs
 data/output/yolo/overlays
 data/output/tuned_yolo_overlays
@@ -61,3 +63,5 @@ models/*
 /.claude/
 /hpc/
 /configs
+/mlflow.db
+/mlruns

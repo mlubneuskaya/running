@@ -171,7 +171,7 @@ def main(cfg: ExperimentConfig, features_dir: str, video_input_dir: str, max_epo
         "test_athletes":   test_athletes,
         "metrics":         metrics,
     }
-    out_path = cfg.results_path("img_baselines")
+    out_path = cfg.results_path("results")
     with open(out_path, "w") as f:
         json.dump(out, f, indent=2)
     logger.info("Results saved to %s", out_path)
