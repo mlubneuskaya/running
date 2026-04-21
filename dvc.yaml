@@ -295,17 +295,23 @@ stages:
     outs:
       - data/output/gait/image_features/
 
-  # ── Stage II — per-frame MLP baseline (validates backbone features) ───────────
+  # ── Stage II — per-frame XGBoost baseline with Optuna tuning ────────────────
   img_baselines:
     cmd: python -m experiments.gait_detection.img_baselines --config configs/experiments/img_baselines.yaml
     deps:
       - experiments/gait_detection/img_baselines.py
       - src/gait/image/dataset.py
+      - src/gait/detection/metrics.py
+      - configs/experiments/img_baselines.yaml
       - data/output/gait/image_features/
       - data/output/annotations/optojump/ml_training_dataset.csv
-    metrics:
-      - data/output/gait/image/stage1/results.json:
-          cache: false
+    params:
+      - configs/experiments/img_baselines.yaml:
+          - optuna.n_trials
+          - experiment.n_val_athletes_tuning
+    outs:
+      - data/output/gait/image/stage1/results.json
+      - data/output/gait/image/stage1/checkpoints/xgboost_best.pkl
 
   # ── Stage III — TCN hyperparameter search (Optuna + MLflow) ─────────────────
   img_tcn_tune:
