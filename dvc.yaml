@@ -286,7 +286,7 @@ stages:
       - src/gait/image/extractor.py
       - configs/experiments/img_feature_extract.yaml
       - data/input/optojump/
-      - data/output/pose/optojump/
+      - data/output/pose/tuned_yolo/000332/optojump
     params:
       - configs/experiments/img_feature_extract.yaml:
           - backbone
@@ -331,8 +331,7 @@ stages:
           - search_space
     outs:
       - data/output/gait/image/stage2/best_params.json
-      - data/output/gait/image/stage2/study.log:
-          cache: false
+      - data/output/gait/image/stage2/study.log
 
   # ── Stage IV — LOAO cross-validation (MLflow per fold) ───────────────────────
   img_tcn_loao:
