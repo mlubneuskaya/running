@@ -680,8 +680,8 @@ stages:
       size: 1902774
     - path: notebooks/eda_training_dataset.ipynb
       hash: md5
-      md5: fca08ad6c438c27970d4288ae667fb32
-      size: 597936
+      md5: 3ba7124f6a17f87a91f004b92bc7e523
+      size: 17688
     outs:
     - path: data/output/gait/notebooks/eda_training_dataset.ipynb
       hash: md5
@@ -691,6 +691,19 @@ stages:
     cmd: "papermill notebooks/analyze_optuna_study.ipynb data/output/gait/notebooks/analyze_optuna_study.ipynb
       -k python3\n"
     deps:
+    - path: data/output/gait/image/stage2/best_params.json
+      hash: md5
+      md5: 1027388adcb8119c5892966087588e4d
+      size: 1754
+    - path: data/output/gait/image/stage2/study.log
+      hash: md5
+      md5: d3889d5643944b73a267c32c3a40fbba
+      size: 717185
+    - path: data/output/gait/image/stage4/
+      hash: md5
+      md5: cb511117ab884d589a25f7a07a74fcaf.dir
+      size: 395362668
+      nfiles: 106
     - path: data/output/gait/stage2/best_params.json
       hash: md5
       md5: fa62925d395c9646cd28878f2cb90232
@@ -706,17 +719,26 @@ stages:
       nfiles: 5
     - path: notebooks/analyze_optuna_study.ipynb
       hash: md5
-      md5: 5442135b067992d54f43a9f0bc1bb1d5
-      size: 21447
+      md5: a9f63540b390de003e26f04911291776
+      size: 40865
     outs:
     - path: data/output/gait/notebooks/analyze_optuna_study.ipynb
       hash: md5
-      md5: 81417423e74105051b9f02dedb4f85ab
-      size: 954227
+      md5: 76da45946351d752a95b28564508e447
+      size: 1693366
   nb_model_comparison:
     cmd: "papermill notebooks/compare_kinematic_xgboost.ipynb data/output/gait/notebooks/compare_kinematic_xgboost.ipynb
       -k python3\n"
     deps:
+    - path: data/output/gait/image/stage6/manifest.json
+      hash: md5
+      md5: 622cfba7f5ad00ba177349d191ccce4d
+      size: 49317
+    - path: data/output/gait/image/stage6/probs/
+      hash: md5
+      md5: 4c121fbab3f7ccda1339660ce1c508cb.dir
+      size: 297980
+      nfiles: 178
     - path: data/output/gait/stage3/best_params.json
       hash: md5
       md5: fa03f35028acc55f00e7712d512b50ec
@@ -732,8 +754,8 @@ stages:
       nfiles: 178
     - path: notebooks/compare_kinematic_xgboost.ipynb
       hash: md5
-      md5: 3e67c67fce1f190743b3298e8df02a15
-      size: 173361
+      md5: ed5cb18f8c882dcc670d117b0b1c9e41
+      size: 178046
     - path: src/gait/detection/metrics.py
       hash: md5
       md5: 917f2f5c4d939e15898eb419d6c68bff
@@ -745,12 +767,21 @@ stages:
     outs:
     - path: data/output/gait/notebooks/compare_kinematic_xgboost.ipynb
       hash: md5
-      md5: 9c86cb16568208b39083328944c37b9e
-      size: 182390
+      md5: d8b5689be2fc22e9e6b4d1e1d79d3853
+      size: 248485
   nb_postprocessing:
     cmd: "papermill notebooks/compare_postprocessing.ipynb data/output/gait/notebooks/compare_postprocessing.ipynb
       -k python3\n"
     deps:
+    - path: data/output/gait/image/stage6/manifest.json
+      hash: md5
+      md5: 622cfba7f5ad00ba177349d191ccce4d
+      size: 49317
+    - path: data/output/gait/image/stage6/probs/
+      hash: md5
+      md5: 4c121fbab3f7ccda1339660ce1c508cb.dir
+      size: 297980
+      nfiles: 178
     - path: data/output/gait/stage6/manifest.json
       hash: md5
       md5: 524e42749ef440cf2c3021bb768b8efc
@@ -762,8 +793,8 @@ stages:
       nfiles: 178
     - path: notebooks/compare_postprocessing.ipynb
       hash: md5
-      md5: d207f8aa321743dc4c807abf9f5a117b
-      size: 523079
+      md5: 6dcb8e68c4b11cf66aa1862218ed9f65
+      size: 24443
     - path: src/gait/detection/metrics.py
       hash: md5
       md5: 917f2f5c4d939e15898eb419d6c68bff
@@ -775,8 +806,8 @@ stages:
     outs:
     - path: data/output/gait/notebooks/compare_postprocessing.ipynb
       hash: md5
-      md5: a7d165ab3c6a6bc0cc3a08ab13e48ca3
-      size: 538342
+      md5: fa936cf873d86b4bd03e95cb1d142cdb
+      size: 1006846
   img_feature_extract:
     cmd: python -m experiments.gait_detection.img_feature_extract --config 
       configs/experiments/img_feature_extract.yaml
@@ -818,6 +849,10 @@ stages:
     cmd: python -m experiments.gait_detection.img_baselines --config 
       configs/experiments/img_baselines.yaml
     deps:
+    - path: configs/experiments/img_baselines.yaml
+      hash: md5
+      md5: dc84001667270aac9e51270bba6bf70e
+      size: 456
     - path: data/output/annotations/optojump/ml_training_dataset.csv
       hash: md5
       md5: 18390163a05049da8e372804fdece11f
@@ -829,17 +864,29 @@ stages:
       nfiles: 178
     - path: experiments/gait_detection/img_baselines.py
       hash: md5
-      md5: 305a3fdef309ed943fc31cb0d1522e1d
-      size: 6436
+      md5: db47476213af4b77a7b3255bbae3cf3b
+      size: 6327
+    - path: src/gait/detection/metrics.py
+      hash: md5
+      md5: 917f2f5c4d939e15898eb419d6c68bff
+      size: 5521
     - path: src/gait/image/dataset.py
       hash: md5
       md5: ae6c25535e4e31956bbed5ce23e1aac7
       size: 3416
+    params:
+      configs/experiments/img_baselines.yaml:
+        experiment.n_val_athletes_tuning: 4
+        optuna.n_trials: 50
     outs:
+    - path: data/output/gait/image/stage1/checkpoints/xgboost_best.pkl
+      hash: md5
+      md5: 3a152294b3864d7d047e472fcb11f25e
+      size: 3670424
     - path: data/output/gait/image/stage1/results.json
       hash: md5
-      md5: f0546d001420dc303d650a4fbd37d989
-      size: 571
+      md5: f19c565a1bdd4c8399f7141ac2e01661
+      size: 598
   img_tcn_tune:
     cmd: python -m experiments.gait_detection.img_tcn_tune --config 
       configs/experiments/img_tcn_tuning.yaml
