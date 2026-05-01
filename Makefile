@@ -2,7 +2,7 @@ export PYTHONPATH := $(shell pwd)
 PYTHON := python
 
 # ── pose pipeline configs ─────────────────────────────────────────────────────
-CONFIG_YOLO              := ./configs/config_yolo.yaml
+CONFIG_YOLO              := ./configs/ray_runs/config_yolo_44.yaml
 CONFIG_MP                := ./configs/config_mediapipe.yaml
 CONFIG_OVERLAY_YOLO      := ./configs/config_overlay_yolo.yaml
 CONFIG_OVERLAY_MEDIAPIPE := ./configs/config_overlay_mediapipe.yaml

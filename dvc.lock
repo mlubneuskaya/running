@@ -97,8 +97,8 @@ stages:
     deps:
     - path: configs/ray_runs/
       hash: md5
-      md5: be778f61ee3e2726eb72e6eae546aa90.dir
-      size: 912
+      md5: dafa7d711495d8e97ebc8cb36638d16f.dir
+      size: 888
       nfiles: 4
     - path: data/input/optojump/
       hash: md5
@@ -138,17 +138,17 @@ stages:
     outs:
     - path: data/output/pose/tuned_yolo/
       hash: md5
-      md5: 7b91b6755a75a437ca7c5d07aaea4d2e.dir
-      size: 336138141
-      nfiles: 212
+      md5: bdb39163c55b25f1e99c1e56cddc367a.dir
+      size: 866625330
+      nfiles: 773
   pose_extract_mediapipe:
     cmd: python scripts/run_pose_detection.py --config 
       configs/config_mediapipe.yaml
     deps:
     - path: configs/config_mediapipe.yaml
       hash: md5
-      md5: 49331145acda761252baf17dbaa13a92
-      size: 429
+      md5: add663eb23fc006f33ef660ffa02b94f
+      size: 415
     - path: data/input/video/high_fps/
       hash: md5
       md5: 65156b094114c3d7341a2971736ad8a3.dir
@@ -181,32 +181,32 @@ stages:
     outs:
     - path: data/output/pose/mediapipe/yolo_detector/
       hash: md5
-      md5: ddd02b4f29f71fbbd629a16a9d0c08fc.dir
-      size: 168453654
-      nfiles: 8
+      md5: ef6a4f9d001c4c3bab88a7a12c531a09.dir
+      size: 524534563
+      nfiles: 195
   nb_yolo_comparison:
     cmd: "papermill notebooks/ray_tune_model_comparison.ipynb data/output/pose/notebooks/ray_tune_model_comparison.ipynb
       -k python3\n"
     deps:
     - path: data/output/pose/mediapipe/yolo_detector/
       hash: md5
-      md5: ddd02b4f29f71fbbd629a16a9d0c08fc.dir
-      size: 168453654
-      nfiles: 8
+      md5: ef6a4f9d001c4c3bab88a7a12c531a09.dir
+      size: 524534563
+      nfiles: 195
     - path: data/output/pose/tuned_yolo/
       hash: md5
-      md5: 7b91b6755a75a437ca7c5d07aaea4d2e.dir
-      size: 336138141
-      nfiles: 212
+      md5: bdb39163c55b25f1e99c1e56cddc367a.dir
+      size: 866625330
+      nfiles: 773
     - path: notebooks/ray_tune_model_comparison.ipynb
       hash: md5
-      md5: 52c8ba2b0517fd5bd0d21b23a30d3b0c
-      size: 17877
+      md5: 25c9e4511dfa69606e626b992efec408
+      size: 18562
     outs:
     - path: data/output/pose/notebooks/ray_tune_model_comparison.ipynb
       hash: md5
-      md5: f749008743394f31c37da05e9aef386a
-      size: 1636394
+      md5: 932d1cf004f1bb5455222572c6b9f807
+      size: 1693871
   pose_extract:
     cmd: python scripts/run_pose_detection.py --config configs/config_yolo.yaml
     deps:
