@@ -1,8 +1,8 @@
 """Stage 2 — Joint hyperparameter search over all 5 parameters.
 
 Tunes learning rate, dropout, n_blocks, n_filters, and kernel_size together
-in a single Optuna study.  Designed for parallel execution: multiple SLURM
-jobs point at the same SQLite database and contribute trials concurrently.
+in a single Optuna study.  Multiple workers can share the same Optuna storage
+to contribute trials concurrently.
 
 All settings are read from a YAML config file.  No experiment parameters are
 passed on the command line.
@@ -37,7 +37,6 @@ from src.gait.gait_data.dataset import compute_class_weights, GaitWindowDataset,
     tuning_split, train_test_split
 from src.pose.utils.load_config import load_config
 
-DEFAULT_CONFIG = "configs/experiments/tcn_tuning.yaml"
 
 
 def _suggest(trial, name: str, spec: dict):
@@ -107,7 +106,7 @@ def main(cfg: ExperimentConfig, storage: str | None, n_trials: int, search_space
     records, _, test_athletes = train_test_split(all_records)
     logger.info("Test athletes excluded from tuning: %s", test_athletes)
     train_records, val_records = tuning_split(
-        records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.tuning_seed
+        records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.random_seed
     )
 
     storage = storage or cfg.optuna_storage
@@ -138,8 +137,7 @@ def main(cfg: ExperimentConfig, storage: str | None, n_trials: int, search_space
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--config", default=DEFAULT_CONFIG,
-        help="Path to YAML config file (default: configs/experiments/stage2_optuna.yaml)",
+        "--config", required=True,
     )
     args = parser.parse_args()
 

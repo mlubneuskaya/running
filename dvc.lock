@@ -253,7 +253,7 @@ stages:
       size: 336138141
       nfiles: 212
   stage1_baselines:
-    cmd: python -m experiments.gait_detection.baselines --config 
+    cmd: python -m experiments.gait_detection.pose_data.baselines --config 
       configs/experiments/pose_data/baselines.yaml
     deps:
     - path: data/output/annotations/optojump/ml_training_dataset.csv
@@ -265,7 +265,7 @@ stages:
       md5: bdb39163c55b25f1e99c1e56cddc367a.dir
       size: 866625330
       nfiles: 773
-    - path: experiments/gait_detection/baselines.py
+    - path: experiments/gait_detection/pose_data/baselines.py
       hash: md5
       md5: 451a948cf4f87c6f3bf88dedfe7389ac
       size: 6769

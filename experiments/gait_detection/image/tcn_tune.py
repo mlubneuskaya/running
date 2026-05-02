@@ -4,13 +4,12 @@ Same search space and study design as the pose-based tcn_tuning.py, but using
 pre-extracted CNN image features.  n_features is inferred from the loaded data
 (512 for ResNet-18, 1280 for EfficientNet-B0).
 
-Designed for parallel execution: multiple SLURM jobs point at the same journal
-file.  Each trial is logged as a nested MLflow run.
+Each trial is logged as a nested MLflow run.
 
 Usage
 -----
     python -m experiments.gait_detection.img_tcn_tune
-    python -m experiments.gait_detection.img_tcn_tune --config configs/experiments/img_tcn_tuning.yaml
+    python -m experiments.gait_detection.img_tcn_tune --config configs/experiments/image/tcn_tuning.yaml
 
 Output
 ------
@@ -46,7 +45,6 @@ from src.pose.utils.load_config import load_config
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CONFIG = "configs/experiments/img_tcn_tuning.yaml"
 
 
 def objective(
@@ -154,7 +152,7 @@ def main(cfg: ExperimentConfig, storage, n_trials: int, search_space: dict, feat
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default=DEFAULT_CONFIG)
+    parser.add_argument("--config", required=True)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

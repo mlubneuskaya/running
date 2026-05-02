@@ -5,7 +5,7 @@ Mirrors tcn_inference.py but uses pre-extracted CNN image features.
 Usage
 -----
     python -m experiments.gait_detection.img_tcn_infer
-    python -m experiments.gait_detection.img_tcn_infer --config configs/experiments/img_tcn_inference.yaml
+    python -m experiments.gait_detection.img_tcn_infer --config configs/experiments/image/tcn_inference.yaml
 
 Output
 ------
@@ -37,7 +37,6 @@ from src.pose.utils.load_config import load_config
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CONFIG = "configs/experiments/img_tcn_inference.yaml"
 
 
 def _safe_stem(video_path: str) -> str:
@@ -138,7 +137,7 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default=DEFAULT_CONFIG)
+    parser.add_argument("--config", required=True)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

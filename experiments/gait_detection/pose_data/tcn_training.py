@@ -37,7 +37,6 @@ from src.pose.utils.load_config import load_config
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CONFIG = "configs/experiments/tcn_training.yaml"
 
 
 def epochs_from_loao(trial_id: int, loao_dir: str) -> int:
@@ -174,7 +173,7 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default=DEFAULT_CONFIG)
+    parser.add_argument("--config", required=True)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

@@ -7,7 +7,7 @@ produces class-discriminative representations.
 Usage
 -----
     python -m experiments.gait_detection.img_baselines
-    python -m experiments.gait_detection.img_baselines --config configs/experiments/img_baselines.yaml
+    python -m experiments.gait_detection.img_baselines --config configs/experiments/image/baselines.yaml
 
 Output
 ------
@@ -37,7 +37,6 @@ from src.pose.utils.load_config import load_config
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CONFIG = "configs/experiments/img_baselines.yaml"
 
 
 def _flatten(records) -> tuple[np.ndarray, np.ndarray]:
@@ -163,7 +162,7 @@ def main(cfg: ExperimentConfig, features_dir: str, video_input_dir: str, n_trial
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default=DEFAULT_CONFIG)
+    parser.add_argument("--config", required=True)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

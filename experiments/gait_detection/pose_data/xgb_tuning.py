@@ -131,13 +131,11 @@ def main(cfg: ExperimentConfig | None = None, n_trials: int = 50) -> None:
     logger.info("Params saved → %s", out_path)
 
 
-DEFAULT_CONFIG = "configs/experiments/stage_xgb_tune.yaml"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--config", default=DEFAULT_CONFIG,
-        help="Path to YAML config file (default: configs/experiments/stage_xgb_tune.yaml)",
+        "--config", required=True,
     )
     args = parser.parse_args()
 
