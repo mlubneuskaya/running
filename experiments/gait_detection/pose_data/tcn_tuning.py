@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 from experiments.gait_detection.config import ExperimentConfig
 import src.gait.detection.dilations as dilation_schedules
 from src.gait.detection.model import TCN
-from src.gait.detection.train import TrainerConfig, Trainer
+from src.gait.detection.train import TrainerConfig, Trainer, seed_everything
 from src.gait.gait_data.dataset import compute_class_weights, GaitWindowDataset, GaitSequenceDataset, load_dataset, \
     tuning_split, train_test_split
 from src.pose.utils.load_config import load_config
@@ -102,6 +102,7 @@ def objective(trial, train_records, val_records, cfg: ExperimentConfig, search_s
 
 
 def main(cfg: ExperimentConfig, storage: str | None, n_trials: int, search_space: dict) -> None:
+    seed_everything(cfg.random_seed)
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     records, _, test_athletes = train_test_split(all_records)
     logger.info("Test athletes excluded from tuning: %s", test_athletes)
@@ -115,6 +116,7 @@ def main(cfg: ExperimentConfig, storage: str | None, n_trials: int, search_space
         direction="minimize",
         storage=storage,
         load_if_exists=True,
+        sampler=optuna.samplers.TPESampler(seed=cfg.random_seed),
         pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=20),
     )
 

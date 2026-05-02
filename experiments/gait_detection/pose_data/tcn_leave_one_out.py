@@ -38,7 +38,7 @@ from src.gait.detection.metrics import (
 )
 from src.gait.detection.model import TCN
 from src.gait.detection.postprocess import derive_events, min_duration_filter
-from src.gait.detection.train import TrainerConfig, Trainer
+from src.gait.detection.train import TrainerConfig, Trainer, seed_everything
 from src.gait.gait_data.dataset import (
     GaitSequenceDataset,
     GaitWindowDataset,
@@ -201,6 +201,7 @@ def run_loao(
 
 def main(cfg: ExperimentConfig, study_cfg: dict, trial_ids: list[int],
          auto_mode: bool = False) -> None:
+    seed_everything(cfg.random_seed)
     logger.info("Loading dataset …")
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     logger.info("%d videos loaded.", len(all_records))

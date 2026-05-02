@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 from experiments.gait_detection.config import ExperimentConfig
 from src.gait.detection.metrics import per_class_f1
+from src.gait.detection.train import seed_everything
 from src.gait.gait_data.dataset import load_dataset, tuning_split, train_test_split
 from src.pose.utils.load_config import load_config
 
@@ -68,6 +69,7 @@ def objective(
         tree_method="hist",
         device="cpu",
         verbosity=0,
+        random_state=cfg.random_seed,
     )
     clf.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
     y_pred = clf.predict(X_val)
@@ -77,11 +79,12 @@ def objective(
 
 def main(cfg: ExperimentConfig | None = None, n_trials: int = 50) -> None:
     cfg = cfg or ExperimentConfig()
+    seed_everything(cfg.random_seed)
 
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     records, _, _ = train_test_split(all_records)
     train_records, val_records = tuning_split(
-        records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.tuning_seed
+        records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.random_seed
     )
 
     X_train, y_train = _flatten(train_records, cfg.feature_idx)
@@ -92,6 +95,7 @@ def main(cfg: ExperimentConfig | None = None, n_trials: int = 50) -> None:
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     study = optuna.create_study(
         direction="maximize",
+        sampler=optuna.samplers.TPESampler(seed=cfg.random_seed),
         pruner=optuna.pruners.MedianPruner(n_startup_trials=5),
     )
     study.optimize(
@@ -111,6 +115,7 @@ def main(cfg: ExperimentConfig | None = None, n_trials: int = 50) -> None:
         tree_method="hist",
         device="cpu",
         verbosity=0,
+        random_state=cfg.random_seed,
     )
     best_clf.fit(X_train, y_train)
 

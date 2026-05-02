@@ -31,6 +31,7 @@ import mlflow
 
 from experiments.gait_detection.config import ExperimentConfig
 from src.gait.detection.metrics import per_class_f1
+from src.gait.detection.train import seed_everything
 from src.gait.gait_data.dataset import train_test_split, tuning_split
 from src.gait.image.dataset import load_image_dataset
 from src.pose.utils.load_config import load_config
@@ -53,6 +54,7 @@ def _objective(
     y_val: np.ndarray,
     n_classes: int,
     class_names: list[str],
+    random_seed: int = 42,
 ) -> float:
     params = {
         "n_estimators":     trial.suggest_int("n_estimators",      100,  800),
@@ -69,6 +71,7 @@ def _objective(
         tree_method="hist",
         device="cpu",
         verbosity=0,
+        random_state=random_seed,
     )
     clf.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
     y_pred = clf.predict(X_val)
@@ -77,6 +80,7 @@ def _objective(
 
 
 def main(cfg: ExperimentConfig, features_dir: str, video_input_dir: str, n_trials: int) -> None:
+    seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_image_baselines")
 
     logger.info("Loading image dataset …")
@@ -85,7 +89,7 @@ def main(cfg: ExperimentConfig, features_dir: str, video_input_dir: str, n_trial
 
     records, _, test_athletes = train_test_split(all_records)
     logger.info("Test athletes excluded: %s", test_athletes)
-    train_records, val_records = tuning_split(records, cfg.n_val_athletes_tuning, cfg.tuning_seed)
+    train_records, val_records = tuning_split(records, cfg.n_val_athletes_tuning, cfg.random_seed)
     logger.info("Train: %d records  Val: %d records", len(train_records), len(val_records))
 
     X_train, y_train = _flatten(train_records)
@@ -96,6 +100,7 @@ def main(cfg: ExperimentConfig, features_dir: str, video_input_dir: str, n_trial
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     study = optuna.create_study(
         direction="maximize",
+        sampler=optuna.samplers.TPESampler(seed=cfg.random_seed),
         pruner=optuna.pruners.MedianPruner(n_startup_trials=5),
     )
 
@@ -109,7 +114,7 @@ def main(cfg: ExperimentConfig, features_dir: str, video_input_dir: str, n_trial
 
         study.optimize(
             lambda trial: _objective(
-                trial, X_train, y_train, X_val, y_val, cfg.n_classes, cfg.class_names
+                trial, X_train, y_train, X_val, y_val, cfg.n_classes, cfg.class_names, cfg.random_seed
             ),
             n_trials=n_trials,
             show_progress_bar=True,
@@ -130,6 +135,7 @@ def main(cfg: ExperimentConfig, features_dir: str, video_input_dir: str, n_trial
         tree_method="hist",
         device="cpu",
         verbosity=0,
+        random_state=cfg.random_seed,
     )
     best_clf.fit(X_train, y_train)
 

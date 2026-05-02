@@ -32,7 +32,7 @@ import src.gait.detection.dilations as dilation_schedules
 from experiments.gait_detection.config import ExperimentConfig
 from experiments.gait_detection.tcn_tuning import _suggest
 from src.gait.detection.model import TCN
-from src.gait.detection.train import Trainer, TrainerConfig
+from src.gait.detection.train import Trainer, TrainerConfig, seed_everything
 from src.gait.gait_data.dataset import (
     GaitSequenceDataset,
     GaitWindowDataset,
@@ -101,6 +101,7 @@ def objective(
 
 
 def main(cfg: ExperimentConfig, storage, n_trials: int, search_space: dict, features_dir: str, video_input_dir: str, top_n: int = 3) -> None:
+    seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_image_tcn_tuning")
 
     logger.info("Loading image dataset …")
@@ -109,7 +110,7 @@ def main(cfg: ExperimentConfig, storage, n_trials: int, search_space: dict, feat
 
     records, _, test_athletes = train_test_split(all_records)
     logger.info("Test athletes excluded: %s", test_athletes)
-    train_records, val_records = tuning_split(records, cfg.n_val_athletes_tuning, cfg.tuning_seed)
+    train_records, val_records = tuning_split(records, cfg.n_val_athletes_tuning, cfg.random_seed)
     logger.info("Train: %d  Val: %d", len(train_records), len(val_records))
 
     n_features = train_records[0].features.shape[1]
@@ -120,6 +121,7 @@ def main(cfg: ExperimentConfig, storage, n_trials: int, search_space: dict, feat
         direction="minimize",
         storage=storage,
         load_if_exists=True,
+        sampler=optuna.samplers.TPESampler(seed=cfg.random_seed),
         pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=20),
     )
 

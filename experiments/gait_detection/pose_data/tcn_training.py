@@ -31,7 +31,7 @@ import src.gait.detection.dilations as dilation_schedules
 from experiments.gait_detection.config import ExperimentConfig
 from experiments.gait_detection.study_utils import load_study, params_from_trial
 from src.gait.detection.model import TCN
-from src.gait.detection.train import train_epoch, get_device
+from src.gait.detection.train import train_epoch, get_device, seed_everything
 from src.gait.gait_data.dataset import load_dataset, compute_class_weights, GaitWindowDataset, train_test_split
 from src.pose.utils.load_config import load_config
 
@@ -131,6 +131,7 @@ def main(
     loao_dir: str,
     log_every: int = 10,
 ) -> None:
+    seed_everything(cfg.random_seed)
     logger.info("Loading dataset …")
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     logger.info("%d videos loaded.", len(all_records))

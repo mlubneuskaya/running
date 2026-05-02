@@ -31,7 +31,7 @@ from experiments.gait_detection.config import ExperimentConfig
 from experiments.gait_detection.study_utils import load_study, params_from_trial
 from experiments.gait_detection.tcn_training import epochs_from_loao
 from src.gait.detection.model import TCN
-from src.gait.detection.train import get_device, train_epoch
+from src.gait.detection.train import get_device, train_epoch, seed_everything
 from src.gait.gait_data.dataset import GaitWindowDataset, compute_class_weights, train_test_split
 from src.gait.image.dataset import load_image_dataset
 from src.pose.utils.load_config import load_config
@@ -111,6 +111,7 @@ def main(
     video_input_dir: str,
     log_every: int,
 ) -> None:
+    seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_image_tcn_training")
 
     logger.info("Loading image dataset …")

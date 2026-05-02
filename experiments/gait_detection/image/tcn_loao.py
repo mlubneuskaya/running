@@ -42,7 +42,7 @@ from src.gait.detection.metrics import (
 )
 from src.gait.detection.model import TCN
 from src.gait.detection.postprocess import min_duration_filter
-from src.gait.detection.train import Trainer, TrainerConfig
+from src.gait.detection.train import Trainer, TrainerConfig, seed_everything
 from src.gait.gait_data.dataset import (
     GaitSequenceDataset,
     GaitWindowDataset,
@@ -185,6 +185,7 @@ def run_loao(
 
 
 def main(cfg: ExperimentConfig, study_cfg: dict, trial_ids: list[int], features_dir: str, video_input_dir: str) -> None:
+    seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_image_tcn_loao")
 
     logger.info("Loading image dataset …")

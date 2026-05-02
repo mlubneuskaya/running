@@ -4,14 +4,25 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 from dataclasses import dataclass
 from typing import Callable
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
 logger = logging.getLogger(__name__)
+
+
+def seed_everything(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 def get_device(device: str | None = None) -> torch.device:
