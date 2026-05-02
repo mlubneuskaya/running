@@ -4,8 +4,7 @@ Experiments
 -----------
 1. Kinematic baseline: detect_landings / detect_liftoffs + heel-y side assignment
    (sanity check — must exceed 80% accuracy)
-2. XGBoost, all 22 features
-3. XGBoost feature group ablation:
+2. XGBoost feature group ablation:
    A: position only (6 features)
    B: A + velocities (16 features)
    C: B + angles (20 features)
@@ -48,15 +47,15 @@ from src.gait.gait_data.dataset import tuning_split, load_dataset, train_test_sp
 # 20–21 : hip y + hip dy/dt
 
 SLICE_POSITION = list(range(0, 6))
-SLICE_VELOCITY = list(range(6, 16))    # both y and x vels
-SLICE_ANGLES   = list(range(16, 20))
-SLICE_HIP      = list(range(20, 22))
+SLICE_VELOCITY = list(range(6, 16))  # both y and x vels
+SLICE_ANGLES = list(range(16, 20))
+SLICE_HIP = list(range(20, 22))
 
 FEATURE_GROUPS = {
-    "A_position":            SLICE_POSITION,
-    "B_position_velocity":   SLICE_POSITION + SLICE_VELOCITY,
+    "A_position": SLICE_POSITION,
+    "B_position_velocity": SLICE_POSITION + SLICE_VELOCITY,
     "C_position_vel_angles": SLICE_POSITION + SLICE_VELOCITY + SLICE_ANGLES,
-    "D_all":                 list(range(22)),
+    "D_all": list(range(22)),
 }
 
 
@@ -74,8 +73,10 @@ def _eval_detector(detector, val_records, cfg: ExperimentConfig) -> dict:
     """Run a detector on all val records, collect frame-level and timing metrics."""
     all_true, all_pred = [], []
     timing: dict[str, list[dict]] = {
-        "left_landing": [], "left_takeoff": [],
-        "right_landing": [], "right_takeoff": [],
+        "left_landing": [],
+        "left_takeoff": [],
+        "right_landing": [],
+        "right_takeoff": [],
     }
 
     for rec in val_records:
@@ -83,8 +84,8 @@ def _eval_detector(detector, val_records, cfg: ExperimentConfig) -> dict:
         all_true.append(rec.labels)
         all_pred.append(pred)
 
-        gt_ev   = derive_events(rec.labels, cfg.fps)
-        pred_ev = derive_events(pred,        cfg.fps)
+        gt_ev = derive_events(rec.labels, cfg.fps)
+        pred_ev = derive_events(pred, cfg.fps)
         for key in timing:
             err = timing_error_full(pred_ev[key], gt_ev[key], cfg.fps)
             timing[key].append(err)
@@ -92,8 +93,10 @@ def _eval_detector(detector, val_records, cfg: ExperimentConfig) -> dict:
     y_true = np.concatenate(all_true)
     y_pred = np.concatenate(all_pred)
     acc = float((y_true == y_pred).mean())
-    f1  = per_class_f1(y_true, y_pred, n_classes=cfg.n_classes, class_names=cfg.class_names)
-    cm  = confusion_matrix(y_true, y_pred, n_classes=cfg.n_classes).tolist()
+    f1 = per_class_f1(
+        y_true, y_pred, n_classes=cfg.n_classes, class_names=cfg.class_names
+    )
+    cm = confusion_matrix(y_true, y_pred, n_classes=cfg.n_classes).tolist()
 
     def _mean_timing(lst: list[dict], unit: str) -> float:
         vals = [d[unit] for d in lst if not np.isnan(d[unit])]
@@ -101,16 +104,22 @@ def _eval_detector(detector, val_records, cfg: ExperimentConfig) -> dict:
 
     timing_summary = {
         key: {
-            "ms":     _mean_timing(timing[key], "ms"),
+            "ms": _mean_timing(timing[key], "ms"),
             "frames": _mean_timing(timing[key], "frames"),
         }
         for key in timing
     }
 
-    return {"accuracy": acc, "f1": f1, "confusion_matrix": cm, "timing_error": timing_summary}
+    return {
+        "accuracy": acc,
+        "f1": f1,
+        "confusion_matrix": cm,
+        "timing_error": timing_summary,
+    }
 
 
 # ── 1. Kinematic baseline ─────────────────────────────────────────────────────
+
 
 def run_kinematic(val_records, cfg: ExperimentConfig) -> dict:
     detector = KinematicDetector()
@@ -120,9 +129,10 @@ def run_kinematic(val_records, cfg: ExperimentConfig) -> dict:
 
 # ── 2. XGBoost ───────────────────────────────────────────────────────────
 
+
 def run_xgboost(train_records, val_records, feature_idx, cfg: ExperimentConfig) -> dict:
     X_train, y_train = _flatten(train_records, feature_idx)
-    X_val,   y_val   = _flatten(val_records,   feature_idx)
+    X_val, y_val = _flatten(val_records, feature_idx)
 
     clf = xgb.XGBClassifier(
         n_estimators=300,
@@ -138,8 +148,10 @@ def run_xgboost(train_records, val_records, feature_idx, cfg: ExperimentConfig) 
     y_pred = clf.predict(X_val)
 
     acc = (y_val == y_pred).mean()
-    f1  = per_class_f1(y_val, y_pred, n_classes=cfg.n_classes, class_names=cfg.class_names)
-    cm  = confusion_matrix(y_val, y_pred, n_classes=cfg.n_classes).tolist()
+    f1 = per_class_f1(
+        y_val, y_pred, n_classes=cfg.n_classes, class_names=cfg.class_names
+    )
+    cm = confusion_matrix(y_val, y_pred, n_classes=cfg.n_classes).tolist()
 
     full_importances = np.zeros(22)
     indices = list(range(22)) if feature_idx is None else feature_idx
@@ -171,26 +183,28 @@ def main(cfg: ExperimentConfig | None = None) -> None:
         ablation[name] = run_xgboost(train_records, val_records, feat_idx, cfg)
     all_results["xgboost_ablation"] = ablation
 
-    all_results['data'] = {}
-    all_results['data']['train_records'] = len(train_records)
-    all_results['data']['val_records'] = len(val_records)
+    all_results["data"] = {}
+    all_results["data"]["train_records"] = len(train_records)
+    all_results["data"]["val_records"] = len(val_records)
 
-    out_path = cfg.results_path("stage1_baselines")
+    out_path = cfg.results_path("results")
     with open(out_path, "w") as f:
         json.dump(all_results, f, indent=2)
 
 
-DEFAULT_CONFIG = "configs/experiments/stage1_baselines.yaml"
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--config", default=DEFAULT_CONFIG,
-        help="Path to YAML config file (default: configs/experiments/stage1_baselines.yaml)",
+        "--config",
+        required=True,
+        type=str,
+        help="Path to YAML config file",
     )
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
     raw = load_config(args.config)
     cfg = ExperimentConfig(**raw.get("experiment", {}))
     main(cfg)

@@ -254,7 +254,7 @@ stages:
       nfiles: 212
   stage1_baselines:
     cmd: python -m experiments.gait_detection.baselines --config 
-      configs/experiments/baselines.yaml
+      configs/experiments/pose_data/baselines.yaml
     deps:
     - path: data/output/annotations/optojump/ml_training_dataset.csv
       hash: md5
@@ -262,13 +262,13 @@ stages:
       size: 1902774
     - path: data/output/pose/tuned_yolo/
       hash: md5
-      md5: 7b91b6755a75a437ca7c5d07aaea4d2e.dir
-      size: 336138141
-      nfiles: 212
+      md5: bdb39163c55b25f1e99c1e56cddc367a.dir
+      size: 866625330
+      nfiles: 773
     - path: experiments/gait_detection/baselines.py
       hash: md5
-      md5: 29f881969df07ba981213e84cb6c64fb
-      size: 6858
+      md5: 9d3551bd5b2efcb0bb677be6f882692c
+      size: 6761
     - path: src/gait/detection/detectors.py
       hash: md5
       md5: ccefe2471955fbf742a94c8f4a22f46c
@@ -282,31 +282,12 @@ stages:
       md5: ce9f948bc288df04e9393a017db7b5a5
       size: 13324
     params:
-      configs/experiments/baselines.yaml:
-        experiment.feature_idx:
-        - 0
-        - 1
-        - 2
-        - 3
-        - 4
-        - 5
-        - 6
-        - 7
-        - 8
-        - 9
-        - 10
-        - 11
-        - 12
-        - 13
-        - 14
-        - 15
-        - 16
-        - 17
-        - 18
-        - 19
+      configs/experiments/pose_data/baselines.yaml:
+        experiment.fps: 120.0
         experiment.n_val_athletes_tuning: 4
+        experiment.tuning_seed: 42
     outs:
-    - path: data/output/gait/stage1/results.json
+    - path: data/output/gait/pose_data/stage1/results.json
       hash: md5
       md5: b72cd39580fb20cf10b9114d19e7efc4
       size: 5193

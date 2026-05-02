@@ -96,7 +96,7 @@ stages:
 
   # ── Stage 1 — kinematic baseline + XGBoost feature ablation ─────────────────
   stage1_baselines:
-    cmd: python -m experiments.gait_detection.baselines --config configs/experiments/baselines.yaml
+    cmd: python -m experiments.gait_detection.baselines --config configs/experiments/pose_data/baselines.yaml
     deps:
       - experiments/gait_detection/baselines.py
       - src/gait/detection/detectors.py
@@ -105,13 +105,14 @@ stages:
       - data/output/annotations/optojump/ml_training_dataset.csv
       - data/output/pose/tuned_yolo/
     params:
-      - configs/experiments/baselines.yaml:
-          - experiment.feature_idx
+      - configs/experiments/pose_data/baselines.yaml:
+          - experiment.fps
           - experiment.n_val_athletes_tuning
+          - experiment.tuning_seed
     metrics:
-      - data/output/gait/stage1/results.json
+      - data/output/gait/pose_data/stage1/results.json
 
-  # ── Stage 2 — TCN hyperparameter search (Optuna, parallelisable) ─────────────
+  # ── Stage 2 — TCN hyperparameter search (Optuna) ─────────────
   stage2_tcn_tune:
     cmd: python -m experiments.gait_detection.tcn_tuning --config configs/experiments/tcn_tuning.yaml
     deps:
