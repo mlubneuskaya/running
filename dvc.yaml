@@ -146,8 +146,8 @@ stages:
           - optuna.n_trials
           - experiment.feature_idx
     outs:
-      - data/output/gait/stage3/best_params.json
-      - data/output/gait/stage3/model.pkl
+      - data/output/gait/pose_data/stage3/best_params.json
+      - data/output/gait/pose_data/stage3/model.pkl
 
   # ── Stage 4 — leave-one-athlete-out CV for best Optuna trial ─────────────────
   stage4_loao:
@@ -167,8 +167,8 @@ stages:
           - experiment.max_epochs
           - experiment.early_stopping_patience
     outs:
-      - data/output/gait/stage4/results
-      - data/output/gait/stage4/checkpoints:
+      - data/output/gait/pose_data/stage4/results
+      - data/output/gait/pose_data/stage4/checkpoints:
           cache: false
 
   # ── Stage 5 — final training on all train athletes ───────────────────────────
@@ -180,7 +180,7 @@ stages:
       - src/gait/detection/train.py
       - src/gait/gait_data/dataset.py
       - data/output/gait/pose_data/stage2/best_params.json
-      - data/output/gait/stage4/results
+      - data/output/gait/pose_data/stage4/results
       - data/output/annotations/optojump/ml_training_dataset.csv
       - data/output/pose/tuned_yolo/
     params:
@@ -189,8 +189,8 @@ stages:
           - experiment.batch_size
           - log_every
     outs:
-      - data/output/gait/stage5/training.json
-      - data/output/gait/stage5/checkpoint.pt:
+      - data/output/gait/pose_data/stage5/training.json
+      - data/output/gait/pose_data/stage5/checkpoint.pt:
           cache: true
 
   # ── Stage 6 — inference: save per-record softmax probabilities ────────────────
@@ -200,15 +200,15 @@ stages:
       - experiments/gait_detection/pose_data/tcn_inference.py
       - src/gait/detection/model.py
       - src/gait/gait_data/dataset.py
-      - data/output/gait/stage5/
+      - data/output/gait/pose_data/stage5/
       - data/output/annotations/optojump/ml_training_dataset.csv
       - data/output/pose/tuned_yolo/
     params:
       - configs/experiments/pose_data/tcn_inference.yaml:
           - experiment.feature_idx
     outs:
-      - data/output/gait/stage6/manifest.json
-      - data/output/gait/stage6/probs/
+      - data/output/gait/pose_data/stage6/manifest.json
+      - data/output/gait/pose_data/stage6/probs/
 
   # ── Notebooks — executed with papermill, outputs written to data/ ─────────────
 
@@ -233,7 +233,7 @@ stages:
       - notebooks/analyze_optuna_study.ipynb
       - data/output/gait/pose_data/stage2/study.log
       - data/output/gait/pose_data/stage2/best_params.json
-      - data/output/gait/stage4/results
+      - data/output/gait/pose_data/stage4/results
       - data/output/gait/image/stage2/study.log
       - data/output/gait/image/stage2/best_params.json
       - data/output/gait/image/stage4/
@@ -250,9 +250,9 @@ stages:
       - notebooks/compare_kinematic_xgboost.ipynb
       - src/gait/detection/postprocess.py
       - src/gait/detection/metrics.py
-      - data/output/gait/stage3/best_params.json
-      - data/output/gait/stage6/manifest.json
-      - data/output/gait/stage6/probs/
+      - data/output/gait/pose_data/stage3/best_params.json
+      - data/output/gait/pose_data/stage6/manifest.json
+      - data/output/gait/pose_data/stage6/probs/
       - data/output/gait/image/stage6/manifest.json
       - data/output/gait/image/stage6/probs/
     outs:
@@ -268,8 +268,8 @@ stages:
       - notebooks/compare_postprocessing.ipynb
       - src/gait/detection/postprocess.py
       - src/gait/detection/metrics.py
-      - data/output/gait/stage6/manifest.json
-      - data/output/gait/stage6/probs/
+      - data/output/gait/pose_data/stage6/manifest.json
+      - data/output/gait/pose_data/stage6/probs/
       - data/output/gait/image/stage6/manifest.json
       - data/output/gait/image/stage6/probs/
     outs:
