@@ -267,8 +267,8 @@ stages:
       nfiles: 773
     - path: experiments/gait_detection/baselines.py
       hash: md5
-      md5: 9d3551bd5b2efcb0bb677be6f882692c
-      size: 6761
+      md5: 451a948cf4f87c6f3bf88dedfe7389ac
+      size: 6769
     - path: src/gait/detection/detectors.py
       hash: md5
       md5: ccefe2471955fbf742a94c8f4a22f46c
@@ -285,12 +285,12 @@ stages:
       configs/experiments/pose_data/baselines.yaml:
         experiment.fps: 120.0
         experiment.n_val_athletes_tuning: 4
-        experiment.tuning_seed: 42
+        experiment.random_seed: 42
     outs:
     - path: data/output/gait/pose_data/stage1/results.json
       hash: md5
-      md5: b72cd39580fb20cf10b9114d19e7efc4
-      size: 5193
+      md5: bef04e461c66581d1cd86d4c355779e8
+      size: 5184
   stage2_tcn_tune:
     cmd: python -m experiments.gait_detection.tcn_tuning --config 
       configs/experiments/tcn_tuning.yaml

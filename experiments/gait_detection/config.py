@@ -15,6 +15,7 @@ class ExperimentConfig:
     class_names: list[str] = field(default_factory=lambda: ["left_stance", "right_stance", "flight"])
 
     # Training defaults
+    random_seed: int = 42
     batch_size: int = 16
     max_epochs: int = 200
     early_stopping_patience: int = 20
@@ -54,7 +55,6 @@ class ExperimentConfig:
 
     # Tuning split
     n_val_athletes_tuning: int = 4
-    tuning_seed: int = 42
 
     def checkpoint_path(self, name: str) -> str:
         os.makedirs(self.checkpoint_dir, exist_ok=True)

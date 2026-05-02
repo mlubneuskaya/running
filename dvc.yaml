@@ -108,7 +108,7 @@ stages:
       - configs/experiments/pose_data/baselines.yaml:
           - experiment.fps
           - experiment.n_val_athletes_tuning
-          - experiment.tuning_seed
+          - experiment.random_seed
     metrics:
       - data/output/gait/pose_data/stage1/results.json
 

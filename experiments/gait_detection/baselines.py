@@ -141,7 +141,7 @@ def run_xgboost(train_records, val_records, feature_idx, cfg: ExperimentConfig) 
         subsample=0.8,
         eval_metric="mlogloss",
         tree_method="hist",
-        device="cpu",
+        seed=cfg.random_seed,
         verbosity=0,
     )
     clf.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
@@ -173,7 +173,7 @@ def main(cfg: ExperimentConfig | None = None) -> None:
     records, _, _ = train_test_split(all_records)
 
     train_records, val_records = tuning_split(
-        records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.tuning_seed
+        records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.random_seed
     )
 
     all_results["kinematic"] = run_kinematic(val_records, cfg)
