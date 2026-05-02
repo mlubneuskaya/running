@@ -26,6 +26,7 @@ import argparse
 import json
 import logging
 
+import mlflow
 import numpy as np
 import xgboost as xgb
 
@@ -169,6 +170,8 @@ def main(cfg: ExperimentConfig | None = None) -> None:
     all_results = {}
 
     cfg = cfg or ExperimentConfig()
+    mlflow.set_experiment("gait_pose_baselines")
+
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     records, _, _ = train_test_split(all_records)
 
@@ -176,16 +179,28 @@ def main(cfg: ExperimentConfig | None = None) -> None:
         records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.random_seed
     )
 
-    all_results["kinematic"] = run_kinematic(val_records, cfg)
+    with mlflow.start_run(run_name="pose_baselines"):
+        mlflow.log_params({
+            "n_val_athletes": cfg.n_val_athletes_tuning,
+            "n_train_records": len(train_records),
+            "n_val_records":   len(val_records),
+        })
 
-    ablation = {}
-    for name, feat_idx in FEATURE_GROUPS.items():
-        ablation[name] = run_xgboost(train_records, val_records, feat_idx, cfg)
-    all_results["xgboost_ablation"] = ablation
+        kinematic = run_kinematic(val_records, cfg)
+        all_results["kinematic"] = kinematic
+        mlflow.log_metric("kinematic_macro_f1", kinematic["f1"]["macro"])
 
-    all_results["data"] = {}
-    all_results["data"]["train_records"] = len(train_records)
-    all_results["data"]["val_records"] = len(val_records)
+        ablation = {}
+        for name, feat_idx in FEATURE_GROUPS.items():
+            result = run_xgboost(train_records, val_records, feat_idx, cfg)
+            ablation[name] = result
+            mlflow.log_metric(f"xgb_{name}_macro_f1", result["f1"]["macro"])
+        all_results["xgboost_ablation"] = ablation
+
+        all_results["data"] = {
+            "train_records": len(train_records),
+            "val_records":   len(val_records),
+        }
 
     out_path = cfg.results_path("results")
     with open(out_path, "w") as f:

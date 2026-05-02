@@ -267,8 +267,8 @@ stages:
       nfiles: 773
     - path: experiments/gait_detection/pose_data/baselines.py
       hash: md5
-      md5: 451a948cf4f87c6f3bf88dedfe7389ac
-      size: 6769
+      md5: 08b6284f197f8c2aadca852875919128
+      size: 7302
     - path: src/gait/detection/detectors.py
       hash: md5
       md5: ccefe2471955fbf742a94c8f4a22f46c

@@ -22,6 +22,7 @@ import json
 import logging
 import os
 
+import mlflow
 import numpy as np
 import optuna
 import torch
@@ -80,116 +81,131 @@ def run_loao(
     fold_results = []
     all_cms      = []
 
-    for fold_i, (train_records, val_records, athlete) in enumerate(loao_splits(records), 1):
-        logger.info(
-            "[Trial %d | Fold %d/%d] Held out: %s (%d videos)",
-            trial_id, fold_i, n_athletes, athlete, len(val_records),
-        )
+    with mlflow.start_run(run_name=f"pose_tcn_loao_trial_{trial_id}"):
+        mlflow.log_params(params)
 
-        dilations = getattr(dilation_schedules, params["dilation_schedule"])(params["n_blocks"])
-        model = TCN(
-            n_features=n_features,
-            n_blocks=params["n_blocks"],
-            n_filters=params["n_filters"],
-            kernel_size=params["kernel_size"],
-            dropout=params["dropout"],
-            dilations=dilations,
-        )
+        for fold_i, (train_records, val_records, athlete) in enumerate(loao_splits(records), 1):
+            logger.info(
+                "[Trial %d | Fold %d/%d] Held out: %s (%d videos)",
+                trial_id, fold_i, n_athletes, athlete, len(val_records),
+            )
 
-        class_weights = compute_class_weights(train_records, n_classes=cfg.n_classes)
-        ckpt = cfg.checkpoint_path(f"loao_{trial_id}_{athlete}")
-        trainer_cfg = TrainerConfig(
-            lr=params["lr"],
-            dropout=params["dropout"],
-            batch_size=cfg.batch_size,
-            max_epochs=cfg.max_epochs,
-            early_stopping_patience=cfg.early_stopping_patience,
-            lr_schedule_factor=cfg.lr_schedule_factor,
-            lr_schedule_patience=cfg.lr_schedule_patience,
-            max_grad_norm=cfg.max_grad_norm,
-            window_size=cfg.window_size,
-            checkpoint_path=ckpt,
-        )
-        trainer = Trainer(model, class_weights, trainer_cfg)
+            dilations = getattr(dilation_schedules, params["dilation_schedule"])(params["n_blocks"])
+            model = TCN(
+                n_features=n_features,
+                n_blocks=params["n_blocks"],
+                n_filters=params["n_filters"],
+                kernel_size=params["kernel_size"],
+                dropout=params["dropout"],
+                dilations=dilations,
+            )
 
-        train_ds = GaitWindowDataset(train_records, window_size=cfg.window_size, feature_idx=cfg.feature_idx)
-        val_ds   = GaitSequenceDataset(val_records, feature_idx=cfg.feature_idx)
+            class_weights = compute_class_weights(train_records, n_classes=cfg.n_classes)
+            ckpt = cfg.checkpoint_path(f"loao_{trial_id}_{athlete}")
+            trainer_cfg = TrainerConfig(
+                lr=params["lr"],
+                dropout=params["dropout"],
+                batch_size=cfg.batch_size,
+                max_epochs=cfg.max_epochs,
+                early_stopping_patience=cfg.early_stopping_patience,
+                lr_schedule_factor=cfg.lr_schedule_factor,
+                lr_schedule_patience=cfg.lr_schedule_patience,
+                max_grad_norm=cfg.max_grad_norm,
+                window_size=cfg.window_size,
+                checkpoint_path=ckpt,
+            )
+            trainer = Trainer(model, class_weights, trainer_cfg)
 
-        train_loader = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True, num_workers=0)
-        val_loader   = DataLoader(val_ds, batch_size=1, shuffle=False,
-                                  collate_fn=GaitSequenceDataset.collate, num_workers=0)
+            train_ds = GaitWindowDataset(train_records, window_size=cfg.window_size, feature_idx=cfg.feature_idx)
+            val_ds   = GaitSequenceDataset(val_records, feature_idx=cfg.feature_idx)
 
-        def _epoch_cb(epoch, train_loss, val_loss):
-            if epoch % 10 == 0:
-                logger.info("  Epoch %3d  train=%.4f  val=%.4f", epoch, train_loss, val_loss)
+            train_loader = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True, num_workers=0)
+            val_loader   = DataLoader(val_ds, batch_size=1, shuffle=False,
+                                      collate_fn=GaitSequenceDataset.collate, num_workers=0)
 
-        train_result = trainer.fit(train_loader, val_loader, epoch_callback=_epoch_cb)
+            def _epoch_cb(epoch, train_loss, val_loss):
+                if epoch % 10 == 0:
+                    logger.info("  Epoch %3d  train=%.4f  val=%.4f", epoch, train_loss, val_loss)
 
-        device = next(model.parameters()).device
-        fold_y_true, fold_y_pred = [], []
-        timing_errs: dict[str, list[dict]] = {
-            "left_landing": [], "left_takeoff": [],
-            "right_landing": [], "right_takeoff": [],
+            train_result = trainer.fit(train_loader, val_loader, epoch_callback=_epoch_cb)
+
+            device = next(model.parameters()).device
+            fold_y_true, fold_y_pred = [], []
+            timing_errs: dict[str, list[dict]] = {
+                "left_landing": [], "left_takeoff": [],
+                "right_landing": [], "right_takeoff": [],
+            }
+
+            for rec in val_records:
+                raw_pred = _predict(model, rec, device, cfg.feature_idx)
+                pred = min_duration_filter(raw_pred, min_frames=3)
+                fold_y_true.append(rec.labels)
+                fold_y_pred.append(pred)
+
+                gt_events   = derive_events(rec.labels, fps=cfg.fps)
+                pred_events = derive_events(pred, fps=cfg.fps)
+                for key in timing_errs:
+                    timing_errs[key].append(timing_error_full(pred_events[key], gt_events[key], cfg.fps))
+
+            y_true = np.concatenate(fold_y_true)
+            y_pred = np.concatenate(fold_y_pred)
+            f1     = per_class_f1(y_true, y_pred, n_classes=cfg.n_classes, class_names=cfg.class_names)
+            cm     = confusion_matrix(y_true, y_pred, n_classes=cfg.n_classes)
+            all_cms.append(cm)
+
+            def _mean(lst, unit):
+                vals = [d[unit] for d in lst if not np.isnan(d[unit])]
+                return float(np.mean(vals)) if vals else float("nan")
+
+            fold_results.append({
+                "athlete":          athlete,
+                "n_val_videos":     len(val_records),
+                "f1":               f1,
+                "confusion_matrix": cm.tolist(),
+                "training":         train_result,
+                "timing_error": {
+                    key: {
+                        "ms":            _mean(timing_errs[key], "ms"),
+                        "frames":        _mean(timing_errs[key], "frames"),
+                        "signed_ms":     _mean(timing_errs[key], "signed_ms"),
+                        "signed_frames": _mean(timing_errs[key], "signed_frames"),
+                    }
+                    for key in timing_errs
+                },
+            })
+
+            with mlflow.start_run(run_name=f"fold_{athlete}", nested=True):
+                mlflow.log_metric("macro_f1",      f1["macro"])
+                mlflow.log_metric("best_epoch",    train_result["best_epoch"])
+                mlflow.log_metric("best_val_loss", train_result["best_val_loss"])
+                for cls in cfg.class_names:
+                    mlflow.log_metric(f"f1_{cls}", f1[cls])
+
+            logger.info(
+                "  F1 macro=%.3f  left=%.3f  right=%.3f  flight=%.3f",
+                f1["macro"], f1["left_stance"], f1["right_stance"], f1["flight"],
+            )
+
+        macro_f1s = [r["f1"]["macro"] for r in fold_results]
+        total_cm  = aggregate_confusion_matrices(all_cms)
+
+        summary = {
+            "trial_id":           trial_id,
+            "params":             params,
+            "n_folds":            len(fold_results),
+            "macro_f1_mean":      float(np.mean(macro_f1s)),
+            "macro_f1_std":       float(np.std(macro_f1s)),
+            "per_class_f1_mean":  {
+                cls: float(np.mean([r["f1"][cls] for r in fold_results]))
+                for cls in cfg.class_names
+            },
+            "total_confusion_matrix": total_cm.tolist(),
+            "folds":              fold_results,
         }
 
-        for rec in val_records:
-            raw_pred = _predict(model, rec, device, cfg.feature_idx)
-            pred = min_duration_filter(raw_pred, min_frames=3)
-            fold_y_true.append(rec.labels)
-            fold_y_pred.append(pred)
+        mlflow.log_metric("macro_f1_mean", summary["macro_f1_mean"])
+        mlflow.log_metric("macro_f1_std",  summary["macro_f1_std"])
 
-            gt_events   = derive_events(rec.labels, fps=cfg.fps)
-            pred_events = derive_events(pred, fps=cfg.fps)
-            for key in timing_errs:
-                timing_errs[key].append(timing_error_full(pred_events[key], gt_events[key], cfg.fps))
-
-        y_true = np.concatenate(fold_y_true)
-        y_pred = np.concatenate(fold_y_pred)
-        f1     = per_class_f1(y_true, y_pred, n_classes=cfg.n_classes, class_names=cfg.class_names)
-        cm     = confusion_matrix(y_true, y_pred, n_classes=cfg.n_classes)
-        all_cms.append(cm)
-
-        def _mean(lst, unit):
-            vals = [d[unit] for d in lst if not np.isnan(d[unit])]
-            return float(np.mean(vals)) if vals else float("nan")
-
-        fold_results.append({
-            "athlete":          athlete,
-            "n_val_videos":     len(val_records),
-            "f1":               f1,
-            "confusion_matrix": cm.tolist(),
-            "training":         train_result,
-            "timing_error": {
-                key: {
-                    "ms":            _mean(timing_errs[key], "ms"),
-                    "frames":        _mean(timing_errs[key], "frames"),
-                    "signed_ms":     _mean(timing_errs[key], "signed_ms"),
-                    "signed_frames": _mean(timing_errs[key], "signed_frames"),
-                }
-                for key in timing_errs
-            },
-        })
-        logger.info(
-            "  F1 macro=%.3f  left=%.3f  right=%.3f  flight=%.3f",
-            f1["macro"], f1["left_stance"], f1["right_stance"], f1["flight"],
-        )
-
-    macro_f1s = [r["f1"]["macro"] for r in fold_results]
-    total_cm  = aggregate_confusion_matrices(all_cms)
-
-    summary = {
-        "trial_id":           trial_id,
-        "params":             params,
-        "n_folds":            len(fold_results),
-        "macro_f1_mean":      float(np.mean(macro_f1s)),
-        "macro_f1_std":       float(np.std(macro_f1s)),
-        "per_class_f1_mean":  {
-            cls: float(np.mean([r["f1"][cls] for r in fold_results]))
-            for cls in cfg.class_names
-        },
-        "total_confusion_matrix": total_cm.tolist(),
-        "folds":              fold_results,
-    }
     logger.info(
         "Trial %d  Macro F1: %.3f ± %.3f",
         trial_id, summary["macro_f1_mean"], summary["macro_f1_std"],
@@ -202,6 +218,7 @@ def run_loao(
 def main(cfg: ExperimentConfig, study_cfg: dict, trial_ids: list[int],
          auto_mode: bool = False) -> None:
     seed_everything(cfg.random_seed)
+    mlflow.set_experiment("gait_pose_tcn_loao")
     logger.info("Loading dataset …")
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     logger.info("%d videos loaded.", len(all_records))

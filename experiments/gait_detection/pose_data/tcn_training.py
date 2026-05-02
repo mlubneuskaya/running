@@ -22,6 +22,7 @@ import json
 import logging
 import os
 
+import mlflow
 import optuna
 import torch
 import torch.nn as nn
@@ -103,16 +104,24 @@ def train_trial(
 
     train_losses: list[float] = []
 
-    for epoch in range(1, max_epochs + 1):
-        loss = train_epoch(model, loader, optimizer, criterion, device, cfg.max_grad_norm)
-        train_losses.append(loss)
-        scheduler.step(loss)
-        if epoch % log_every == 0:
-            logger.info("Trial %d  Epoch %3d/%d  train=%.4f", trial_id, epoch, max_epochs, loss)
+    with mlflow.start_run(run_name=f"pose_tcn_train_trial_{trial_id}"):
+        mlflow.log_params(params)
+        mlflow.log_param("max_epochs", max_epochs)
+        mlflow.log_param("n_features", n_features)
 
-    ckpt_path = cfg.checkpoint_path(f"checkpoint")
-    torch.save(model.state_dict(), ckpt_path)
-    logger.info("Trial %d  saved → %s", trial_id, ckpt_path)
+        for epoch in range(1, max_epochs + 1):
+            loss = train_epoch(model, loader, optimizer, criterion, device, cfg.max_grad_norm)
+            train_losses.append(loss)
+            scheduler.step(loss)
+            mlflow.log_metric("train_loss", loss, step=epoch)
+            if epoch % log_every == 0:
+                logger.info("Trial %d  Epoch %3d/%d  train=%.4f", trial_id, epoch, max_epochs, loss)
+
+        ckpt_path = cfg.checkpoint_path(f"checkpoint")
+        torch.save(model.state_dict(), ckpt_path)
+        mlflow.log_metric("final_loss", train_losses[-1])
+        mlflow.log_artifact(ckpt_path, artifact_path="checkpoints")
+        logger.info("Trial %d  saved → %s", trial_id, ckpt_path)
 
     return {
         "trial_id":     trial_id,
@@ -132,6 +141,7 @@ def main(
     log_every: int = 10,
 ) -> None:
     seed_everything(cfg.random_seed)
+    mlflow.set_experiment("gait_pose_tcn_training")
     logger.info("Loading dataset …")
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     logger.info("%d videos loaded.", len(all_records))

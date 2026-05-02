@@ -24,6 +24,7 @@ import logging
 import os
 
 import joblib
+import mlflow
 import numpy as np
 import optuna
 import xgboost as xgb
@@ -80,6 +81,7 @@ def objective(
 def main(cfg: ExperimentConfig | None = None, n_trials: int = 50) -> None:
     cfg = cfg or ExperimentConfig()
     seed_everything(cfg.random_seed)
+    mlflow.set_experiment("gait_pose_xgb_tuning")
 
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     records, _, _ = train_test_split(all_records)
@@ -98,15 +100,28 @@ def main(cfg: ExperimentConfig | None = None, n_trials: int = 50) -> None:
         sampler=optuna.samplers.TPESampler(seed=cfg.random_seed),
         pruner=optuna.pruners.MedianPruner(n_startup_trials=5),
     )
-    study.optimize(
-        lambda trial: objective(trial, X_train, y_train, X_val, y_val, cfg),
-        n_trials=n_trials,
-        show_progress_bar=True,
-    )
 
-    best_params = study.best_params
-    logger.info("Best macro F1 : %.4f", study.best_value)
-    logger.info("Best params   : %s", best_params)
+    with mlflow.start_run(run_name="pose_xgb_tune"):
+        mlflow.log_params({
+            "n_trials":       n_trials,
+            "n_val_athletes": cfg.n_val_athletes_tuning,
+            "n_features":     X_train.shape[1],
+            "feature_idx":    str(cfg.feature_idx),
+        })
+
+        study.optimize(
+            lambda trial: objective(trial, X_train, y_train, X_val, y_val, cfg),
+            n_trials=n_trials,
+            show_progress_bar=True,
+        )
+
+        best_params = study.best_params
+        logger.info("Best macro F1 : %.4f", study.best_value)
+        logger.info("Best params   : %s", best_params)
+
+        mlflow.log_metric("best_val_macro_f1", study.best_value)
+        for k, v in best_params.items():
+            mlflow.log_param(f"best_{k}", v)
 
     # Retrain best model (no early-stopping set, use n_estimators from search)
     best_clf = xgb.XGBClassifier(

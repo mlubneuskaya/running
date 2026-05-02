@@ -24,6 +24,7 @@ import json
 import logging
 import os
 
+import mlflow
 import optuna
 from torch.utils.data import DataLoader
 
@@ -95,6 +96,12 @@ def objective(trial, train_records, val_records, cfg: ExperimentConfig, search_s
                               collate_fn=GaitSequenceDataset.collate, num_workers=0)
 
     result = trainer.fit(train_loader, val_loader)
+
+    with mlflow.start_run(run_name=f"trial_{trial.number}", nested=True):
+        mlflow.log_params(params)
+        mlflow.log_metric("val_loss",   result["best_val_loss"])
+        mlflow.log_metric("best_epoch", result["best_epoch"])
+
     trial.set_user_attr("train_losses", result["train_losses"])
     trial.set_user_attr("val_losses",   result["val_losses"])
     trial.set_user_attr("best_epoch",   result["best_epoch"])
@@ -103,6 +110,8 @@ def objective(trial, train_records, val_records, cfg: ExperimentConfig, search_s
 
 def main(cfg: ExperimentConfig, storage: str | None, n_trials: int, search_space: dict) -> None:
     seed_everything(cfg.random_seed)
+    mlflow.set_experiment("gait_pose_tcn_tuning")
+
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     records, _, test_athletes = train_test_split(all_records)
     logger.info("Test athletes excluded from tuning: %s", test_athletes)
@@ -120,11 +129,14 @@ def main(cfg: ExperimentConfig, storage: str | None, n_trials: int, search_space
         pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=20),
     )
 
-    study.optimize(
-        lambda trial: objective(trial, train_records, val_records, cfg, search_space),
-        n_trials=n_trials,
-    )
-
+    with mlflow.start_run(run_name="optuna_study"):
+        study.optimize(
+            lambda trial: objective(trial, train_records, val_records, cfg, search_space),
+            n_trials=n_trials,
+        )
+        mlflow.log_metric("best_val_loss",  study.best_value)
+        mlflow.log_metric("best_trial_id",  study.best_trial.number)
+        mlflow.log_params(study.best_params)
 
     out = {
         "best_trial_id": study.best_trial.number,
