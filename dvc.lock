@@ -731,8 +731,8 @@ stages:
       nfiles: 178
     - path: notebooks/compare_kinematic_xgboost.ipynb
       hash: md5
-      md5: ba778a463e1efba2395d98a50ede23d6
-      size: 179972
+      md5: bf3e8288bbeac8d1f4c0d4a990923ec3
+      size: 32268
     - path: src/gait/detection/metrics.py
       hash: md5
       md5: 917f2f5c4d939e15898eb419d6c68bff
@@ -744,8 +744,8 @@ stages:
     outs:
     - path: data/output/gait/notebooks/compare_kinematic_xgboost.ipynb
       hash: md5
-      md5: 4a4e40fa3ab3bab679cae3224a2f504d
-      size: 247191
+      md5: f2a98c6ee3fb2ab30260a5743beafb90
+      size: 308462
   nb_postprocessing:
     cmd: "papermill notebooks/compare_postprocessing.ipynb data/output/gait/notebooks/compare_postprocessing.ipynb
       -k python3\n"
@@ -770,8 +770,8 @@ stages:
       nfiles: 178
     - path: notebooks/compare_postprocessing.ipynb
       hash: md5
-      md5: 6f3c6f08e31c28a520bcc7f8b103b4b8
-      size: 26029
+      md5: 70e3cae5a4c37a588854d482b06f4e6c
+      size: 29212
     - path: src/gait/detection/metrics.py
       hash: md5
       md5: 917f2f5c4d939e15898eb419d6c68bff
@@ -783,8 +783,8 @@ stages:
     outs:
     - path: data/output/gait/notebooks/compare_postprocessing.ipynb
       hash: md5
-      md5: 7865e28471c4771a5e5e845a504c7d97
-      size: 1110323
+      md5: 5a35653d5bc791f730dc680bdc3cd4ba
+      size: 1374871
   img_feature_extract:
     cmd: python -m experiments.gait_detection.image.feature_extract --config 
       configs/experiments/image/feature_extract.yaml
@@ -1077,5 +1077,135 @@ stages:
     - path: data/output/gait/image/stage6/probs/
       hash: md5
       md5: 7d369c5f25280f026f88bba9478912f8.dir
+      size: 297980
+      nfiles: 178
+  img_resnet_tune:
+    cmd: python -m experiments.gait_detection.image.resnet_tune --config 
+      configs/experiments/image/resnet_tune.yaml
+    deps:
+    - path: data/output/annotations/optojump/ml_training_dataset.csv
+      hash: md5
+      md5: 18390163a05049da8e372804fdece11f
+      size: 1902774
+    - path: data/output/gait/image_features/
+      hash: md5
+      md5: f98957d492933c8b91a66fdb1815ea3e.dir
+      size: 61337856
+      nfiles: 178
+    - path: experiments/gait_detection/image/resnet_tune.py
+      hash: md5
+      md5: 035c07621a6e5fbe6a15bd6d4443b87a
+      size: 7442
+    - path: src/gait/image/dataset.py
+      hash: md5
+      md5: ae6c25535e4e31956bbed5ce23e1aac7
+      size: 3416
+    - path: src/gait/image/finetune.py
+      hash: md5
+      md5: 3a1917d203b6e801d4e0920c6e10114e
+      size: 1482
+    params:
+      configs/experiments/image/resnet_tune.yaml:
+        experiment.random_seed: 42
+        optuna.n_trials: 100
+        search_space:
+          lr:
+            type: float
+            low: 0.0001
+            high: 0.01
+            log: true
+          dropout:
+            type: float
+            low: 0.0
+            high: 0.5
+          weight_decay:
+            type: float
+            low: 1e-06
+            high: 0.01
+            log: true
+    outs:
+    - path: data/output/gait/image/resnet/tune/best_params.json
+      hash: md5
+      md5: 1948468cb0bc835936621188a8292789
+      size: 223
+  img_resnet_train:
+    cmd: python -m experiments.gait_detection.image.resnet_train --config 
+      configs/experiments/image/resnet_train.yaml
+    deps:
+    - path: data/output/annotations/optojump/ml_training_dataset.csv
+      hash: md5
+      md5: 18390163a05049da8e372804fdece11f
+      size: 1902774
+    - path: data/output/gait/image/resnet/tune/best_params.json
+      hash: md5
+      md5: 1948468cb0bc835936621188a8292789
+      size: 223
+    - path: data/output/gait/image_features/
+      hash: md5
+      md5: f98957d492933c8b91a66fdb1815ea3e.dir
+      size: 61337856
+      nfiles: 178
+    - path: experiments/gait_detection/image/resnet_train.py
+      hash: md5
+      md5: f7a5db5b23d1083f98a5c8920851690c
+      size: 4662
+    - path: src/gait/image/dataset.py
+      hash: md5
+      md5: ae6c25535e4e31956bbed5ce23e1aac7
+      size: 3416
+    - path: src/gait/image/finetune.py
+      hash: md5
+      md5: 3a1917d203b6e801d4e0920c6e10114e
+      size: 1482
+    outs:
+    - path: data/output/gait/image/resnet/train/checkpoint.pt
+      hash: md5
+      md5: 9b167878e251ea4d10d43e9c85d0a6cd
+      size: 8125
+    - path: data/output/gait/image/resnet/train/resnet_training.json
+      hash: md5
+      md5: 6809a221ce2ffee49c4614a2f8b670a6
+      size: 276
+  img_resnet_infer:
+    cmd: python -m experiments.gait_detection.image.resnet_infer --config 
+      configs/experiments/image/resnet_infer.yaml
+    deps:
+    - path: data/output/annotations/optojump/ml_training_dataset.csv
+      hash: md5
+      md5: 18390163a05049da8e372804fdece11f
+      size: 1902774
+    - path: data/output/gait/image/resnet/train/checkpoint.pt
+      hash: md5
+      md5: 9b167878e251ea4d10d43e9c85d0a6cd
+      size: 8125
+    - path: data/output/gait/image/resnet/tune/best_params.json
+      hash: md5
+      md5: 1948468cb0bc835936621188a8292789
+      size: 223
+    - path: data/output/gait/image_features/
+      hash: md5
+      md5: f98957d492933c8b91a66fdb1815ea3e.dir
+      size: 61337856
+      nfiles: 178
+    - path: experiments/gait_detection/image/resnet_infer.py
+      hash: md5
+      md5: 9d67f15084a38abe6050fb95bd78f263
+      size: 5038
+    - path: src/gait/image/dataset.py
+      hash: md5
+      md5: ae6c25535e4e31956bbed5ce23e1aac7
+      size: 3416
+    - path: src/gait/image/finetune.py
+      hash: md5
+      md5: 3a1917d203b6e801d4e0920c6e10114e
+      size: 1482
+    outs:
+    - path: data/output/gait/image/resnet/infer/manifest.json
+      hash: md5
+      md5: 2a95603c00c6cd4bbdaa3bcb69c188cf
+      size: 50247
+    - path: data/output/gait/image/resnet/infer/probs/
+      hash: md5
+      md5: dc35de10f9cff26042d616ce921374c3.dir
       size: 297980
       nfiles: 178
