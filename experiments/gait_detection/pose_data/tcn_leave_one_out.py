@@ -247,7 +247,7 @@ def main(cfg: ExperimentConfig, study_cfg: dict, trial_ids: list[int],
         summary  = run_loao(trial_id, params, records, cfg)
         # In auto mode (single best trial from pipeline) write a stable loao.json
         # so downstream stages have a predictable dependency path.
-        out_name = "loao" if auto_mode and len(trial_ids) == 1 else f"loao_trial_{trial_id}"
+        out_name = f"loao_trial_{trial_id}"
         out_path = cfg.results_path(out_name)
         with open(out_path, "w") as f:
             json.dump(summary, f, indent=2)

@@ -29,7 +29,7 @@ from torch.utils.data import DataLoader
 import src.gait.detection.dilations as dilation_schedules
 from experiments.gait_detection.config import ExperimentConfig
 from experiments.gait_detection.study_utils import load_study, params_from_trial
-from experiments.gait_detection.tcn_training import epochs_from_loao
+from experiments.gait_detection.pose_data.tcn_training import epochs_from_loao
 from src.gait.detection.model import TCN
 from src.gait.detection.train import get_device, train_epoch, seed_everything
 from src.gait.gait_data.dataset import GaitWindowDataset, compute_class_weights, train_test_split
