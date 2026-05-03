@@ -250,14 +250,14 @@ if __name__ == "__main__":
         if best_params_json:
             with open(best_params_json) as _f:
                 _bp = json.load(_f)
-            top_trials = _bp.get("top_trials")
-            if top_trials:
-                trial_ids = [t["trial_id"] for t in top_trials]
-                logger.info(
-                    "Auto-selected %d trials from top_trials in %s: %s",
-                    len(trial_ids), best_params_json, trial_ids,
-                )
-            else:
+        #     top_trials = _bp.get("top_trials")
+        #     if top_trials:
+        #         trial_ids = [t["trial_id"] for t in top_trials]
+        #         logger.info(
+        #             "Auto-selected %d trials from top_trials in %s: %s",
+        #             len(trial_ids), best_params_json, trial_ids,
+        #         )
+        #     else:
                 trial_ids = [_bp["best_trial_id"]]
                 logger.info("Auto-selected trial %d from %s", trial_ids[0], best_params_json)
         else:

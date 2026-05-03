@@ -12,7 +12,7 @@ Usage
 
 Output
 ------
-    experiments/gait_detection/results/xgb_best_params.json
+    experiments/gait_detection/results/best_params.json
     experiments/gait_detection/checkpoints/xgboost_best.pkl
 """
 
@@ -135,7 +135,7 @@ def main(cfg: ExperimentConfig | None = None, n_trials: int = 50) -> None:
     best_clf.fit(X_train, y_train)
 
     os.makedirs(cfg.checkpoint_dir, exist_ok=True)
-    ckpt_path = os.path.join(cfg.checkpoint_dir, "xgboost_best.pkl")
+    ckpt_path = os.path.join(cfg.checkpoint_dir, "model.pkl")
     joblib.dump(best_clf, ckpt_path)
     logger.info("Model saved  → %s", ckpt_path)
 
@@ -145,7 +145,7 @@ def main(cfg: ExperimentConfig | None = None, n_trials: int = 50) -> None:
         "feature_idx":       cfg.feature_idx,
         "n_features":        len(cfg.feature_idx) if cfg.feature_idx is not None else 22,
     }
-    out_path = cfg.results_path("xgb_best_params")
+    out_path = cfg.results_path("best_params")
     with open(out_path, "w") as f:
         json.dump(out, f, indent=2)
     logger.info("Params saved → %s", out_path)

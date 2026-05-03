@@ -147,7 +147,7 @@ stages:
           - experiment.feature_idx
     outs:
       - data/output/gait/pose_data/stage3/best_params.json
-      - data/output/gait/pose_data/stage3/model.pkl
+      - data/output/gait/pose_data/stage3/checkpoints/model.pkl
 
   # ── Stage 4 — leave-one-athlete-out CV for best Optuna trial ─────────────────
   stage4_loao:
@@ -167,9 +167,7 @@ stages:
           - experiment.max_epochs
           - experiment.early_stopping_patience
     outs:
-      - data/output/gait/pose_data/stage4/results
-      - data/output/gait/pose_data/stage4/checkpoints:
-          cache: false
+      - data/output/gait/pose_data/stage4/
 
   # ── Stage 5 — final training on all train athletes ───────────────────────────
   stage5_train:
@@ -180,7 +178,7 @@ stages:
       - src/gait/detection/train.py
       - src/gait/gait_data/dataset.py
       - data/output/gait/pose_data/stage2/best_params.json
-      - data/output/gait/pose_data/stage4/results
+      - data/output/gait/pose_data/stage4/
       - data/output/annotations/optojump/ml_training_dataset.csv
       - data/output/pose/tuned_yolo/
     params:
@@ -233,7 +231,7 @@ stages:
       - notebooks/analyze_optuna_study.ipynb
       - data/output/gait/pose_data/stage2/study.log
       - data/output/gait/pose_data/stage2/best_params.json
-      - data/output/gait/pose_data/stage4/results
+      - data/output/gait/pose_data/stage4/
       - data/output/gait/image/stage2/study.log
       - data/output/gait/image/stage2/best_params.json
       - data/output/gait/image/stage4/

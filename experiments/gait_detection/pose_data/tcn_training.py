@@ -176,7 +176,7 @@ def main(
         "n_models":   len(results),
         "models":     [{k: v for k, v in r.items() if k != "train_losses"} for r in results],
     }
-    out_path = cfg.results_path("tcn_training")
+    out_path = cfg.results_path("training")
     with open(out_path, "w") as f:
         json.dump(out, f, indent=2)
     logger.info("Summary saved to %s", out_path)
