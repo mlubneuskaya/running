@@ -208,72 +208,6 @@ stages:
       - data/output/gait/pose_data/stage6/manifest.json
       - data/output/gait/pose_data/stage6/probs/
 
-  # ── Notebooks — executed with papermill, outputs written to data/ ─────────────
-
-  nb_eda:
-    cmd: >
-      papermill notebooks/eda_training_dataset.ipynb
-      data/output/gait/notebooks/eda_training_dataset.ipynb
-      -k python3
-    deps:
-      - notebooks/eda_training_dataset.ipynb
-      - data/output/annotations/optojump/ml_training_dataset.csv
-    outs:
-      - data/output/gait/notebooks/eda_training_dataset.ipynb:
-          cache: false
-
-  nb_optuna_analysis:
-    cmd: >
-      papermill notebooks/analyze_optuna_study.ipynb
-      data/output/gait/notebooks/analyze_optuna_study.ipynb
-      -k python3
-    deps:
-      - notebooks/analyze_optuna_study.ipynb
-      - data/output/gait/pose_data/stage2/study.log
-      - data/output/gait/pose_data/stage2/best_params.json
-      - data/output/gait/pose_data/stage4/
-      - data/output/gait/image/stage2/study.log
-      - data/output/gait/image/stage2/best_params.json
-      - data/output/gait/image/stage4/
-    outs:
-      - data/output/gait/notebooks/analyze_optuna_study.ipynb:
-          cache: false
-
-  nb_model_comparison:
-    cmd: >
-      papermill notebooks/compare_kinematic_xgboost.ipynb
-      data/output/gait/notebooks/compare_kinematic_xgboost.ipynb
-      -k python3
-    deps:
-      - notebooks/compare_kinematic_xgboost.ipynb
-      - src/gait/detection/postprocess.py
-      - src/gait/detection/metrics.py
-      - data/output/gait/pose_data/stage3/best_params.json
-      - data/output/gait/pose_data/stage6/manifest.json
-      - data/output/gait/pose_data/stage6/probs/
-      - data/output/gait/image/stage6/manifest.json
-      - data/output/gait/image/stage6/probs/
-    outs:
-      - data/output/gait/notebooks/compare_kinematic_xgboost.ipynb:
-          cache: false
-
-  nb_postprocessing:
-    cmd: >
-      papermill notebooks/compare_postprocessing.ipynb
-      data/output/gait/notebooks/compare_postprocessing.ipynb
-      -k python3
-    deps:
-      - notebooks/compare_postprocessing.ipynb
-      - src/gait/detection/postprocess.py
-      - src/gait/detection/metrics.py
-      - data/output/gait/pose_data/stage6/manifest.json
-      - data/output/gait/pose_data/stage6/probs/
-      - data/output/gait/image/stage6/manifest.json
-      - data/output/gait/image/stage6/probs/
-    outs:
-      - data/output/gait/notebooks/compare_postprocessing.ipynb:
-          cache: false
-
   # ════════════════════════════════════════════════════════════════════════════
   # IMAGE PIPELINE  (CNN backbone + TCN, parallel to pose pipeline)
   # ════════════════════════════════════════════════════════════════════════════
@@ -432,3 +366,69 @@ stages:
     outs:
       - data/output/gait/image/resnet/infer/manifest.json
       - data/output/gait/image/resnet/infer/probs/
+
+  # ── Notebooks — executed with papermill, outputs written to data/ ─────────────
+
+  nb_eda:
+    cmd: >
+      papermill notebooks/eda_training_dataset.ipynb
+      data/output/gait/notebooks/eda_training_dataset.ipynb
+      -k python3
+    deps:
+      - notebooks/eda_training_dataset.ipynb
+      - data/output/annotations/optojump/ml_training_dataset.csv
+    outs:
+      - data/output/gait/notebooks/eda_training_dataset.ipynb:
+          cache: false
+
+  nb_optuna_analysis:
+    cmd: >
+      papermill notebooks/analyze_optuna_study.ipynb
+      data/output/gait/notebooks/analyze_optuna_study.ipynb
+      -k python3
+    deps:
+      - notebooks/analyze_optuna_study.ipynb
+      - data/output/gait/pose_data/stage2/study.log
+      - data/output/gait/pose_data/stage2/best_params.json
+      - data/output/gait/pose_data/stage4/
+      - data/output/gait/image/stage2/study.log
+      - data/output/gait/image/stage2/best_params.json
+      - data/output/gait/image/stage4/
+    outs:
+      - data/output/gait/notebooks/analyze_optuna_study.ipynb:
+          cache: false
+
+  nb_model_comparison:
+    cmd: >
+      papermill notebooks/compare_kinematic_xgboost.ipynb
+      data/output/gait/notebooks/compare_kinematic_xgboost.ipynb
+      -k python3
+    deps:
+      - notebooks/compare_kinematic_xgboost.ipynb
+      - src/gait/detection/postprocess.py
+      - src/gait/detection/metrics.py
+      - data/output/gait/pose_data/stage3/best_params.json
+      - data/output/gait/pose_data/stage6/manifest.json
+      - data/output/gait/pose_data/stage6/probs/
+      - data/output/gait/image/stage6/manifest.json
+      - data/output/gait/image/stage6/probs/
+    outs:
+      - data/output/gait/notebooks/compare_kinematic_xgboost.ipynb:
+          cache: false
+
+  nb_postprocessing:
+    cmd: >
+      papermill notebooks/compare_postprocessing.ipynb
+      data/output/gait/notebooks/compare_postprocessing.ipynb
+      -k python3
+    deps:
+      - notebooks/compare_postprocessing.ipynb
+      - src/gait/detection/postprocess.py
+      - src/gait/detection/metrics.py
+      - data/output/gait/pose_data/stage6/manifest.json
+      - data/output/gait/pose_data/stage6/probs/
+      - data/output/gait/image/stage6/manifest.json
+      - data/output/gait/image/stage6/probs/
+    outs:
+      - data/output/gait/notebooks/compare_postprocessing.ipynb:
+          cache: false
