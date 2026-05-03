@@ -389,3 +389,48 @@ stages:
     outs:
       - data/output/gait/image/stage6/manifest.json
       - data/output/gait/image/stage6/probs/
+
+  # ── ResNet linear-head finetune (image) ──────────────────────────────────────
+  img_resnet_tune:
+    cmd: python -m experiments.gait_detection.image.resnet_tune --config configs/experiments/image/resnet_tune.yaml
+    deps:
+      - experiments/gait_detection/image/resnet_tune.py
+      - src/gait/image/finetune.py
+      - src/gait/image/dataset.py
+      - data/output/gait/image_features/
+      - data/output/annotations/optojump/ml_training_dataset.csv
+    params:
+      - configs/experiments/image/resnet_tune.yaml:
+          - optuna.n_trials
+          - experiment.random_seed
+          - search_space
+    outs:
+      - data/output/gait/image/resnet/tune/best_params.json
+
+  img_resnet_train:
+    cmd: python -m experiments.gait_detection.image.resnet_train --config configs/experiments/image/resnet_train.yaml
+    deps:
+      - experiments/gait_detection/image/resnet_train.py
+      - src/gait/image/finetune.py
+      - src/gait/image/dataset.py
+      - data/output/gait/image_features/
+      - data/output/gait/image/resnet/tune/best_params.json
+      - data/output/annotations/optojump/ml_training_dataset.csv
+    outs:
+      - data/output/gait/image/resnet/train/checkpoint.pt:
+          cache: true
+      - data/output/gait/image/resnet/train/resnet_training.json
+
+  img_resnet_infer:
+    cmd: python -m experiments.gait_detection.image.resnet_infer --config configs/experiments/image/resnet_infer.yaml
+    deps:
+      - experiments/gait_detection/image/resnet_infer.py
+      - src/gait/image/finetune.py
+      - src/gait/image/dataset.py
+      - data/output/gait/image_features/
+      - data/output/gait/image/resnet/train/checkpoint.pt
+      - data/output/gait/image/resnet/tune/best_params.json
+      - data/output/annotations/optojump/ml_training_dataset.csv
+    outs:
+      - data/output/gait/image/resnet/infer/manifest.json
+      - data/output/gait/image/resnet/infer/probs/

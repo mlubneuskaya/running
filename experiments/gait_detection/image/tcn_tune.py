@@ -30,7 +30,7 @@ from torch.utils.data import DataLoader
 
 import src.gait.detection.dilations as dilation_schedules
 from experiments.gait_detection.config import ExperimentConfig
-from experiments.gait_detection.tcn_tuning import _suggest
+from experiments.gait_detection.pose_data.tcn_tuning import _suggest
 from src.gait.detection.model import TCN
 from src.gait.detection.train import Trainer, TrainerConfig, seed_everything
 from src.gait.gait_data.dataset import (
