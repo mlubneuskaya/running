@@ -177,6 +177,54 @@ def _annotation_to_labels(
     return labels
 
 
+def load_dataset_with_pose(
+    annotations_csv: str,
+    fps: float = float(RECORDING_FPS),
+) -> list[tuple[VideoRecord, pd.DataFrame]]:
+    """Like :func:`load_dataset` but also returns the clipped pose DataFrame.
+
+    The pose DataFrame is clipped to exactly the same window as the VideoRecord's
+    features and labels, so ``len(pose_df) == len(record.labels)`` for every pair.
+
+    Returns
+    -------
+    list of (VideoRecord, pose_df) tuples
+    """
+    ann_df = pd.read_csv(annotations_csv)
+    out: list[tuple[VideoRecord, pd.DataFrame]] = []
+
+    for video_path, group in ann_df.groupby("video_path"):
+        pose_path = _pose_path(video_path)
+        smooth = _load_smooth(pose_path)
+        if smooth is None:
+            continue
+
+        feats = extract_features(smooth, fps=fps)
+        T = len(feats)
+        first_frame = int(smooth["frame_index"].iloc[0])
+        labels = _annotation_to_labels(group, first_frame, T)
+
+        first_ann = int(group["frame_number"].min())
+        last_ann  = int(group["frame_number"].max())
+        start_idx = max(0, first_ann - ANNOTATION_PADDING - first_frame)
+        end_idx   = min(T, last_ann  + ANNOTATION_PADDING - first_frame + 1)
+
+        feats  = feats[start_idx:end_idx]
+        labels = labels[start_idx:end_idx]
+        pose_df = smooth.iloc[start_idx:end_idx].reset_index(drop=True)
+
+        athlete = _athlete_from_path(video_path)
+        record = VideoRecord(
+            video_path=video_path,
+            athlete=athlete,
+            features=feats,
+            labels=labels,
+        )
+        out.append((record, pose_df))
+
+    return out
+
+
 def load_dataset(annotations_csv: str, fps: float = float(RECORDING_FPS)) -> list[VideoRecord]:
     """Load all annotated videos into VideoRecord objects.
 

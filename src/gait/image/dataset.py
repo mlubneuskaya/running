@@ -10,6 +10,7 @@ work unchanged because they only access record.features and record.labels.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 
@@ -98,3 +99,59 @@ def load_image_dataset(
 
     logger.info("Loaded %d image records from %s", len(records), features_dir)
     return records
+
+
+def load_image_records_for_finetune(
+    annotations_csv: str,
+    pose_dir: str,
+    video_input_dir: str = "data/input/optojump",
+) -> list[tuple[VideoRecord, str, int]]:
+    """Load annotation info for full-network fine-tuning (no pre-extracted features).
+
+    Returns
+    -------
+    list of (VideoRecord, pose_json_path, frame_start)
+        ``VideoRecord.features`` is an empty placeholder — not used by
+        ``FrameCropDataset``.
+        ``pose_json_path`` points to the pose JSON that carries per-frame bbox data.
+        ``frame_start`` is the first video-frame index included in
+        ``record.labels`` (the clipped annotation window start).
+    """
+    ann_df  = pd.read_csv(annotations_csv)
+    out: list[tuple[VideoRecord, str, int]] = []
+
+    for video_path, group in ann_df.groupby("video_path"):
+        base      = os.path.splitext(video_path)[0]
+        rel       = os.path.relpath(base, video_input_dir)
+        pose_path = os.path.join(pose_dir, rel + ".json")
+
+        if not os.path.exists(pose_path):
+            logger.warning("Pose JSON not found, skipping: %s", pose_path)
+            continue
+
+        with open(pose_path) as f:
+            T = len(json.load(f)["pose_data"])
+
+        first_frame = 0
+        labels      = _annotation_to_labels(group, first_frame, T)
+
+        first_ann = int(group["frame_number"].min())
+        last_ann  = int(group["frame_number"].max())
+        start_idx = max(0, first_ann - ANNOTATION_PADDING)
+        end_idx   = min(T, last_ann  + ANNOTATION_PADDING + 1)
+
+        out.append((
+            VideoRecord(
+                video_path=video_path,
+                athlete=_athlete_from_path(video_path),
+                features=np.empty((end_idx - start_idx, 0), dtype=np.float32),
+                labels=labels[start_idx:end_idx],
+            ),
+            pose_path,
+            start_idx,
+        ))
+
+    logger.info(
+        "Loaded %d image records for fine-tuning from %s", len(out), annotations_csv
+    )
+    return out

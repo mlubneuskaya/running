@@ -1,11 +1,15 @@
-"""Image pipeline — finetune linear head on ResNet features (Optuna tuning).
+"""Image pipeline — full ResNet fine-tuning with Optuna hyperparameter search.
 
-Tunes a linear classifier (dropout + fc) on top of frozen ResNet features.
-Objective: maximize macro F1 on the fixed tuning validation split.
+Trains the complete ResNet backbone + linear head (all weights unfrozen) on
+cropped video frames.  Differential learning rates allow the backbone to be
+updated more conservatively than the head.
+
+Objective: maximise macro F1 on the fixed tuning validation split.
 
 Usage
 -----
-    python -m experiments.gait_detection.image.resnet_tune --config configs/experiments/image/resnet_tune.yaml
+    python -m experiments.gait_detection.image.resnet_tune \
+        --config configs/experiments/image/resnet_tune.yaml
 
 Output
 ------
@@ -30,8 +34,8 @@ from experiments.gait_detection.config import ExperimentConfig
 from src.gait.detection.metrics import per_class_f1
 from src.gait.detection.train import get_device, seed_everything
 from src.gait.gait_data.dataset import train_test_split, tuning_split
-from src.gait.image.dataset import load_image_dataset
-from src.gait.image.finetune import GaitFrameDataset, LinearHead
+from src.gait.image.dataset import load_image_records_for_finetune
+from src.gait.image.finetune import FrameCropDataset, ResNetFinetune
 from src.pose.utils.load_config import load_config
 
 logger = logging.getLogger(__name__)
@@ -72,17 +76,17 @@ def _train_epoch(
 @torch.no_grad()
 def _val_f1(
     model: nn.Module,
-    records: list,
+    val_loader: DataLoader,
     device: torch.device,
     n_classes: int,
     class_names: list[str],
 ) -> float:
     model.eval()
     y_true_all, y_pred_all = [], []
-    for rec in records:
-        X = torch.from_numpy(rec.features).float().to(device)
+    for X, y in val_loader:
+        X = X.to(device)
         y_pred_all.append(model(X).argmax(dim=-1).cpu().numpy())
-        y_true_all.append(rec.labels)
+        y_true_all.append(y.numpy())
     y_true = np.concatenate(y_true_all)
     y_pred = np.concatenate(y_pred_all)
     return per_class_f1(y_true, y_pred, n_classes=n_classes, class_names=class_names)["macro"]
@@ -90,39 +94,47 @@ def _val_f1(
 
 def objective(
     trial: optuna.Trial,
-    train_records: list,
-    val_records: list,
+    train_loader: DataLoader,
+    val_loader: DataLoader,
     cfg: ExperimentConfig,
-    n_features: int,
+    backbone_name: str,
     search_space: dict,
 ) -> float:
     params = {name: _suggest(trial, name, spec) for name, spec in search_space.items()}
 
     device = get_device()
-    model  = LinearHead(n_features, n_classes=cfg.n_classes, dropout=params["dropout"]).to(device)
-    opt    = torch.optim.Adam(
-        model.parameters(), lr=params["lr"], weight_decay=params["weight_decay"]
-    )
-    crit   = nn.NLLLoss()
+    model  = ResNetFinetune(
+        backbone_name=backbone_name,
+        n_classes=cfg.n_classes,
+        dropout=params["dropout"],
+    ).to(device)
 
-    ds     = GaitFrameDataset(train_records)
-    loader = DataLoader(ds, batch_size=cfg.batch_size, shuffle=True, num_workers=0)
+    backbone_lr = params["lr"] * params["backbone_lr_factor"]
+    head_params = [*model.drop.parameters(), *model.fc.parameters()]
+    optimizer = torch.optim.Adam(
+        [
+            {"params": model.backbone.parameters(), "lr": backbone_lr},
+            {"params": head_params,                 "lr": params["lr"]},
+        ],
+        weight_decay=params["weight_decay"],
+    )
+    criterion = nn.CrossEntropyLoss()
 
     best_f1          = 0.0
     best_epoch       = 0
     patience_counter = 0
 
     for epoch in range(1, cfg.max_epochs + 1):
-        _train_epoch(model, loader, opt, crit, device, cfg.max_grad_norm)
-        f1 = _val_f1(model, val_records, device, cfg.n_classes, cfg.class_names)
+        _train_epoch(model, train_loader, optimizer, criterion, device, cfg.max_grad_norm)
+        f1 = _val_f1(model, val_loader, device, cfg.n_classes, cfg.class_names)
 
         trial.report(f1, epoch)
         if trial.should_prune():
             raise optuna.exceptions.TrialPruned()
 
         if f1 > best_f1:
-            best_f1    = f1
-            best_epoch = epoch
+            best_f1          = f1
+            best_epoch       = epoch
             patience_counter = 0
         else:
             patience_counter += 1
@@ -143,23 +155,42 @@ def main(
     cfg: ExperimentConfig,
     n_trials: int,
     search_space: dict,
-    features_dir: str,
+    backbone_name: str,
+    pose_dir: str,
     video_input_dir: str,
+    img_size: int,
+    bbox_padding: float,
 ) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_image_resnet_tuning")
 
-    logger.info("Loading image dataset …")
-    all_records = load_image_dataset(cfg.annotations_csv, features_dir, video_input_dir)
+    logger.info("Loading image records for fine-tuning …")
+    all_records_info = load_image_records_for_finetune(
+        cfg.annotations_csv, pose_dir, video_input_dir
+    )
+    all_records = [r for r, _, _ in all_records_info]
     logger.info("%d records loaded.", len(all_records))
 
     records, _, test_athletes = train_test_split(all_records)
+    test_set = set(test_athletes)
+    train_info = [t for t in all_records_info if t[0].athlete not in test_set]
     logger.info("Test athletes excluded: %s", test_athletes)
-    train_records, val_records = tuning_split(records, cfg.n_val_athletes_tuning, cfg.random_seed)
-    logger.info("Train: %d records  Val: %d records", len(train_records), len(val_records))
 
-    n_features = train_records[0].features.shape[1]
-    logger.info("n_features: %d", n_features)
+    train_records = [r for r, _, _ in train_info]
+    train_info_tuning, val_info = _split_records_info(train_info, cfg, records)
+
+    logger.info(
+        "Train: %d records  Val: %d records",
+        len(train_info_tuning), len(val_info),
+    )
+
+    logger.info("Loading crops into RAM (train) …")
+    train_ds = FrameCropDataset(train_info_tuning, img_size=img_size, bbox_padding=bbox_padding)
+    logger.info("Loading crops into RAM (val) …")
+    val_ds   = FrameCropDataset(val_info,          img_size=img_size, bbox_padding=bbox_padding)
+
+    train_loader = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True,  num_workers=0)
+    val_loader   = DataLoader(val_ds,   batch_size=cfg.batch_size, shuffle=False, num_workers=0)
 
     study = optuna.create_study(
         direction="maximize",
@@ -171,11 +202,13 @@ def main(
         mlflow.log_params({
             "n_trials":       n_trials,
             "n_val_athletes": cfg.n_val_athletes_tuning,
-            "n_features":     n_features,
+            "backbone_name":  backbone_name,
         })
 
         study.optimize(
-            lambda trial: objective(trial, train_records, val_records, cfg, n_features, search_space),
+            lambda trial: objective(
+                trial, train_loader, val_loader, cfg, backbone_name, search_space
+            ),
             n_trials=n_trials,
             show_progress_bar=True,
         )
@@ -195,12 +228,27 @@ def main(
         "best_params":       best_params,
         "best_val_macro_f1": study.best_value,
         "best_epoch":        best_epoch,
-        "n_features":        n_features,
+        "backbone_name":     backbone_name,
+        "img_size":          img_size,
+        "bbox_padding":      bbox_padding,
     }
     out_path = cfg.results_path("best_params")
     with open(out_path, "w") as f:
         json.dump(out, f, indent=2)
     logger.info("Params saved → %s", out_path)
+
+
+def _split_records_info(
+    records_info: list,
+    cfg: ExperimentConfig,
+    all_train_records: list,
+) -> tuple[list, list]:
+    """Apply tuning_split athlete logic to records_info tuples."""
+    _, val_records = tuning_split(all_train_records, cfg.n_val_athletes_tuning, cfg.random_seed)
+    val_athletes   = {r.athlete for r in val_records}
+    train_info = [t for t in records_info if t[0].athlete not in val_athletes]
+    val_info   = [t for t in records_info if t[0].athlete in val_athletes]
+    return train_info, val_info
 
 
 if __name__ == "__main__":
@@ -214,11 +262,14 @@ if __name__ == "__main__":
     cfg             = ExperimentConfig(**raw.get("experiment", {}))
     n_trials        = raw.get("optuna", {}).get("n_trials", 50)
     search_space    = raw.get("search_space", {})
-    features_dir    = raw["features_dir"]
+    backbone_name   = raw.get("backbone_name", "resnet18")
+    pose_dir        = raw["pose_dir"]
     video_input_dir = raw.get("video_input_dir", "data/input/optojump")
+    img_size        = raw.get("img_size", 224)
+    bbox_padding    = raw.get("bbox_padding", 0.1)
 
     if not search_space:
         raise ValueError("'search_space' section is missing or empty in the config.")
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    main(cfg, n_trials, search_space, features_dir, video_input_dir)
+    main(cfg, n_trials, search_space, backbone_name, pose_dir, video_input_dir, img_size, bbox_padding)

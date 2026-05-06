@@ -26,7 +26,7 @@ _IMAGENET_MEAN = [0.485, 0.456, 0.406]
 _IMAGENET_STD  = [0.229, 0.224, 0.225]
 
 
-def _build_backbone(name: str) -> tuple[nn.Module, int]:
+def build_backbone(name: str) -> tuple[nn.Module, int]:
     """Return (backbone, feature_dim) with classifier head replaced by Identity."""
     if name == "resnet18":
         m = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
@@ -78,7 +78,7 @@ class ImageFeatureExtractor:
         self.img_size = img_size
         self.bbox_padding = bbox_padding
 
-        model, self.feature_dim = _build_backbone(backbone)
+        model, self.feature_dim = build_backbone(backbone)
         self.model = model.eval().to(self.device)
 
         self.transform = T.Compose([
