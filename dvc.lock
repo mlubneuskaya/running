@@ -147,8 +147,8 @@ stages:
     deps:
     - path: configs/config_mediapipe.yaml
       hash: md5
-      md5: add663eb23fc006f33ef660ffa02b94f
-      size: 415
+      md5: 77caac65e5ef1ed024c1db72fa3aafc0
+      size: 453
     - path: data/input/video/high_fps/
       hash: md5
       md5: 65156b094114c3d7341a2971736ad8a3.dir
@@ -279,8 +279,8 @@ stages:
       size: 5057
     - path: src/gait/gait_data/dataset.py
       hash: md5
-      md5: ce9f948bc288df04e9393a017db7b5a5
-      size: 13324
+      md5: a56da81e9dadb639942ba93d524bcd5b
+      size: 14941
     params:
       configs/experiments/pose_data/baselines.yaml:
         experiment.fps: 120.0
@@ -318,8 +318,8 @@ stages:
       size: 6769
     - path: src/gait/gait_data/dataset.py
       hash: md5
-      md5: ce9f948bc288df04e9393a017db7b5a5
-      size: 13324
+      md5: a56da81e9dadb639942ba93d524bcd5b
+      size: 14941
     params:
       configs/experiments/pose_data/tcn_tuning.yaml:
         experiment.feature_idx:
@@ -412,8 +412,8 @@ stages:
       size: 5057
     - path: src/gait/gait_data/dataset.py
       hash: md5
-      md5: ce9f948bc288df04e9393a017db7b5a5
-      size: 13324
+      md5: a56da81e9dadb639942ba93d524bcd5b
+      size: 14941
     params:
       configs/experiments/pose_data/xgb_tuning.yaml:
         experiment.feature_idx:
@@ -478,8 +478,8 @@ stages:
       size: 6769
     - path: src/gait/gait_data/dataset.py
       hash: md5
-      md5: ce9f948bc288df04e9393a017db7b5a5
-      size: 13324
+      md5: a56da81e9dadb639942ba93d524bcd5b
+      size: 14941
     params:
       configs/experiments/pose_data/tcn_leave_one_out.yaml:
         experiment.batch_size: 16
@@ -548,8 +548,8 @@ stages:
       size: 6769
     - path: src/gait/gait_data/dataset.py
       hash: md5
-      md5: ce9f948bc288df04e9393a017db7b5a5
-      size: 13324
+      md5: a56da81e9dadb639942ba93d524bcd5b
+      size: 14941
     params:
       configs/experiments/pose_data/tcn_training.yaml:
         experiment.batch_size: 16
@@ -594,9 +594,9 @@ stages:
       size: 1902774
     - path: data/output/gait/pose_data/stage5/
       hash: md5
-      md5: 9b2d6e444920e38c939f588820398010.dir
-      size: 176304
-      nfiles: 2
+      md5: dd5ca96b1ea3f9784d57499efe42eb35.dir
+      size: 176334
+      nfiles: 3
     - path: data/output/pose/tuned_yolo/
       hash: md5
       md5: bdb39163c55b25f1e99c1e56cddc367a.dir
@@ -612,8 +612,8 @@ stages:
       size: 5399
     - path: src/gait/gait_data/dataset.py
       hash: md5
-      md5: ce9f948bc288df04e9393a017db7b5a5
-      size: 13324
+      md5: a56da81e9dadb639942ba93d524bcd5b
+      size: 14941
     params:
       configs/experiments/pose_data/tcn_inference.yaml:
         experiment.feature_idx:
@@ -809,8 +809,8 @@ stages:
       size: 3106
     - path: src/gait/image/extractor.py
       hash: md5
-      md5: 895e9994434647c71026e2d05a8006b2
-      size: 5445
+      md5: 134bc114d0cfa13f928364b96a229c0a
+      size: 5443
     params:
       configs/experiments/image/feature_extract.yaml:
         backbone: resnet18
@@ -849,8 +849,8 @@ stages:
       size: 5521
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: ae6c25535e4e31956bbed5ce23e1aac7
-      size: 3416
+      md5: 6296e9b0617650e8104940ecf4c8a593
+      size: 5428
     params:
       configs/experiments/image/baselines.yaml:
         experiment.n_val_athletes_tuning: 4
@@ -895,8 +895,8 @@ stages:
       size: 6769
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: ae6c25535e4e31956bbed5ce23e1aac7
-      size: 3416
+      md5: 6296e9b0617650e8104940ecf4c8a593
+      size: 5428
     params:
       configs/experiments/image/tcn_tuning.yaml:
         experiment.n_val_athletes_tuning: 4
@@ -975,8 +975,8 @@ stages:
       size: 6769
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: ae6c25535e4e31956bbed5ce23e1aac7
-      size: 3416
+      md5: 6296e9b0617650e8104940ecf4c8a593
+      size: 5428
     params:
       configs/experiments/image/tcn_leave_one_out.yaml:
         experiment.batch_size: 16
@@ -1024,8 +1024,8 @@ stages:
       size: 6769
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: ae6c25535e4e31956bbed5ce23e1aac7
-      size: 3416
+      md5: 6296e9b0617650e8104940ecf4c8a593
+      size: 5428
     params:
       configs/experiments/image/tcn_training.yaml:
         experiment.batch_size: 16
@@ -1064,8 +1064,8 @@ stages:
       size: 5399
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: ae6c25535e4e31956bbed5ce23e1aac7
-      size: 3416
+      md5: 6296e9b0617650e8104940ecf4c8a593
+      size: 5428
     params:
       configs/experiments/image/tcn_inference.yaml:
         experiment.n_classes: 3
@@ -1094,16 +1094,16 @@ stages:
       nfiles: 178
     - path: experiments/gait_detection/image/resnet_tune.py
       hash: md5
-      md5: 035c07621a6e5fbe6a15bd6d4443b87a
-      size: 7442
+      md5: cc15bcc8ffe5e62b8b6e5a800f12d35e
+      size: 9378
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: ae6c25535e4e31956bbed5ce23e1aac7
-      size: 3416
+      md5: 6296e9b0617650e8104940ecf4c8a593
+      size: 5428
     - path: src/gait/image/finetune.py
       hash: md5
-      md5: 3a1917d203b6e801d4e0920c6e10114e
-      size: 1482
+      md5: b2baba240a798230ddad4d4f8416c957
+      size: 6180
     params:
       configs/experiments/image/resnet_tune.yaml:
         experiment.random_seed: 42
@@ -1111,8 +1111,13 @@ stages:
         search_space:
           lr:
             type: float
-            low: 0.0001
-            high: 0.01
+            low: 1e-05
+            high: 0.001
+            log: true
+          backbone_lr_factor:
+            type: float
+            low: 0.01
+            high: 1.0
             log: true
           dropout:
             type: float
@@ -1126,8 +1131,8 @@ stages:
     outs:
     - path: data/output/gait/image/resnet/tune/best_params.json
       hash: md5
-      md5: 1948468cb0bc835936621188a8292789
-      size: 223
+      md5: ee8976d4d6d88b900ac4482582b08ba3
+      size: 321
   img_resnet_train:
     cmd: python -m experiments.gait_detection.image.resnet_train --config 
       configs/experiments/image/resnet_train.yaml
@@ -1138,8 +1143,8 @@ stages:
       size: 1902774
     - path: data/output/gait/image/resnet/tune/best_params.json
       hash: md5
-      md5: 1948468cb0bc835936621188a8292789
-      size: 223
+      md5: ee8976d4d6d88b900ac4482582b08ba3
+      size: 321
     - path: data/output/gait/image_features/
       hash: md5
       md5: f98957d492933c8b91a66fdb1815ea3e.dir
@@ -1147,25 +1152,25 @@ stages:
       nfiles: 178
     - path: experiments/gait_detection/image/resnet_train.py
       hash: md5
-      md5: f7a5db5b23d1083f98a5c8920851690c
-      size: 4662
+      md5: a44f12499c050ff91c959a6a282a42fd
+      size: 5631
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: ae6c25535e4e31956bbed5ce23e1aac7
-      size: 3416
+      md5: 6296e9b0617650e8104940ecf4c8a593
+      size: 5428
     - path: src/gait/image/finetune.py
       hash: md5
-      md5: 3a1917d203b6e801d4e0920c6e10114e
-      size: 1482
+      md5: b2baba240a798230ddad4d4f8416c957
+      size: 6180
     outs:
     - path: data/output/gait/image/resnet/train/checkpoint.pt
       hash: md5
-      md5: 9b167878e251ea4d10d43e9c85d0a6cd
-      size: 8125
+      md5: 2a3eb1de4f991e3543585d808c9512e3
+      size: 44793547
     - path: data/output/gait/image/resnet/train/resnet_training.json
       hash: md5
-      md5: 6809a221ce2ffee49c4614a2f8b670a6
-      size: 276
+      md5: b8f8ca76d558440646c44e70c886d103
+      size: 375
   img_resnet_infer:
     cmd: python -m experiments.gait_detection.image.resnet_infer --config 
       configs/experiments/image/resnet_infer.yaml
@@ -1176,12 +1181,12 @@ stages:
       size: 1902774
     - path: data/output/gait/image/resnet/train/checkpoint.pt
       hash: md5
-      md5: 9b167878e251ea4d10d43e9c85d0a6cd
-      size: 8125
+      md5: 2a3eb1de4f991e3543585d808c9512e3
+      size: 44793547
     - path: data/output/gait/image/resnet/tune/best_params.json
       hash: md5
-      md5: 1948468cb0bc835936621188a8292789
-      size: 223
+      md5: ee8976d4d6d88b900ac4482582b08ba3
+      size: 321
     - path: data/output/gait/image_features/
       hash: md5
       md5: f98957d492933c8b91a66fdb1815ea3e.dir
@@ -1189,23 +1194,23 @@ stages:
       nfiles: 178
     - path: experiments/gait_detection/image/resnet_infer.py
       hash: md5
-      md5: 9d67f15084a38abe6050fb95bd78f263
-      size: 5038
+      md5: 9f940bd01dfc26b4c1d405bd08542241
+      size: 5935
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: ae6c25535e4e31956bbed5ce23e1aac7
-      size: 3416
+      md5: 6296e9b0617650e8104940ecf4c8a593
+      size: 5428
     - path: src/gait/image/finetune.py
       hash: md5
-      md5: 3a1917d203b6e801d4e0920c6e10114e
-      size: 1482
+      md5: b2baba240a798230ddad4d4f8416c957
+      size: 6180
     outs:
     - path: data/output/gait/image/resnet/infer/manifest.json
       hash: md5
-      md5: 2a95603c00c6cd4bbdaa3bcb69c188cf
-      size: 50247
+      md5: 941d498b1367d0d87f44ce501c1613bb
+      size: 50322
     - path: data/output/gait/image/resnet/infer/probs/
       hash: md5
-      md5: dc35de10f9cff26042d616ce921374c3.dir
+      md5: 1525823f6da0e1bc8fd46139522daf34.dir
       size: 297980
       nfiles: 178
