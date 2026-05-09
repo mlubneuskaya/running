@@ -13,6 +13,26 @@ import numpy as np
 from scipy.ndimage import uniform_filter1d
 
 
+# ── Viterbi helper (defined at module level to avoid per-call class creation) ─
+
+def _make_log_prob_hmm():
+    from hmmlearn.base import BaseHMM
+
+    class _LogProbHMM(BaseHMM):
+        """HMM whose emission log-likelihood is supplied directly as input."""
+
+        def _compute_log_likelihood(self, X):
+            return X  # X is (T, n_classes) log-probs — already what we want
+
+        def _get_n_fit_scalars_per_param(self):
+            return {}
+
+    return _LogProbHMM
+
+
+_LogProbHMM = _make_log_prob_hmm()
+
+
 def min_duration_filter(labels: np.ndarray, min_frames: int = 3) -> np.ndarray:
     """Remove label segments shorter than ``min_frames`` by absorbing them into
     the surrounding class.
@@ -132,6 +152,77 @@ def smooth_probs_argmax(probs: np.ndarray, window: int = 5) -> np.ndarray:
         labels  = new_labels
         current = np.eye(n_classes, dtype=np.float32)[labels]
     return labels
+
+
+def estimate_hmm_params(
+    label_sequences: list[np.ndarray],
+    n_classes: int,
+    smoothing: float = 1.0,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Estimate start probabilities and transition matrix from label sequences.
+
+    Parameters
+    ----------
+    label_sequences : list of np.ndarray
+        Per-recording 1-D integer label arrays.
+    n_classes : int
+        Number of label classes.
+    smoothing : float
+        Laplace smoothing count added to every cell before normalisation.
+
+    Returns
+    -------
+    startprob : np.ndarray, shape (n_classes,)
+    transmat  : np.ndarray, shape (n_classes, n_classes)
+    """
+    start_counts = np.ones(n_classes) * smoothing
+    trans_counts = np.ones((n_classes, n_classes)) * smoothing
+
+    for seq in label_sequences:
+        if len(seq) == 0:
+            continue
+        start_counts[int(seq[0])] += 1
+        for i in range(len(seq) - 1):
+            trans_counts[int(seq[i]), int(seq[i + 1])] += 1
+
+    startprob = start_counts / start_counts.sum()
+    transmat = trans_counts / trans_counts.sum(axis=1, keepdims=True)
+    return startprob, transmat
+
+
+def viterbi_decode(
+    probs: np.ndarray,
+    transmat: np.ndarray,
+    startprob: np.ndarray,
+) -> np.ndarray:
+    """Viterbi decoding using per-frame softmax emission probabilities.
+
+    The model's softmax outputs are used directly as emission log-likelihoods
+    inside an HMM whose transition structure was estimated from annotations.
+    Uses hmmlearn for the Viterbi pass.
+
+    Parameters
+    ----------
+    probs : np.ndarray
+        Shape ``(T, n_classes)`` — per-frame softmax probabilities.
+    transmat : np.ndarray
+        Shape ``(n_classes, n_classes)`` — row-stochastic transition matrix.
+    startprob : np.ndarray
+        Shape ``(n_classes,)`` — initial state distribution.
+
+    Returns
+    -------
+    np.ndarray
+        Shape ``(T,)`` int64 — Viterbi-decoded class labels.
+    """
+    n_classes = probs.shape[1]
+    log_probs = np.log(np.clip(probs, 1e-9, 1.0))
+
+    model = _LogProbHMM(n_components=n_classes, init_params="", params="")
+    model.startprob_ = startprob
+    model.transmat_ = transmat
+    _, decoded = model.decode(log_probs, algorithm="viterbi")
+    return decoded.astype(np.int64)
 
 
 def derive_events(

@@ -1214,3 +1214,69 @@ stages:
       md5: 1525823f6da0e1bc8fd46139522daf34.dir
       size: 297980
       nfiles: 178
+  pose_xgb_loao:
+    cmd: python -m experiments.gait_detection.pose_data.xgb_loao --config 
+      configs/experiments/pose_data/xgb_loao.yaml
+    deps:
+    - path: data/output/annotations/optojump/ml_training_dataset.csv
+      hash: md5
+      md5: 18390163a05049da8e372804fdece11f
+      size: 1902774
+    - path: data/output/gait/pose_data/stage3/best_params.json
+      hash: md5
+      md5: f76b77dcd9edb2691d1ee7b7e31118e9
+      size: 489
+    - path: data/output/pose/tuned_yolo/
+      hash: md5
+      md5: bdb39163c55b25f1e99c1e56cddc367a.dir
+      size: 866625330
+      nfiles: 773
+    - path: experiments/gait_detection/pose_data/xgb_loao.py
+      hash: md5
+      md5: 39ea67ab5fc5a56d60676d807e1981e8
+      size: 7429
+    - path: src/gait/detection/metrics.py
+      hash: md5
+      md5: 917f2f5c4d939e15898eb419d6c68bff
+      size: 5521
+    - path: src/gait/gait_data/dataset.py
+      hash: md5
+      md5: a56da81e9dadb639942ba93d524bcd5b
+      size: 14941
+    params:
+      configs/experiments/pose_data/xgb_loao.yaml:
+        experiment.feature_idx:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+        - 7
+        - 8
+        - 9
+        - 10
+        - 11
+        - 12
+        - 13
+        - 14
+        - 15
+        - 16
+        - 17
+        - 18
+        - 19
+    outs:
+    - path: data/output/gait/pose_data/xgb_loao/loao.json
+      hash: md5
+      md5: b734906f59b5e5acf0016a5b39e3e213
+      size: 11470
+    - path: data/output/gait/pose_data/xgb_loao/manifest.json
+      hash: md5
+      md5: 4b7ef2ef92aef72d532647f1fbf1df3e
+      size: 46052
+    - path: data/output/gait/pose_data/xgb_loao/probs/
+      hash: md5
+      md5: ec56e1a45ef0b49e54b322b5aeaed115.dir
+      size: 231648
+      nfiles: 162

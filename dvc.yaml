@@ -149,6 +149,24 @@ stages:
       - data/output/gait/pose_data/stage3/best_params.json
       - data/output/gait/pose_data/stage3/checkpoints/model.pkl
 
+  # ── XGBoost LOAO — pose data ──────────────────────────────────────────────────
+  pose_xgb_loao:
+    cmd: python -m experiments.gait_detection.pose_data.xgb_loao --config configs/experiments/pose_data/xgb_loao.yaml
+    deps:
+      - experiments/gait_detection/pose_data/xgb_loao.py
+      - src/gait/detection/metrics.py
+      - src/gait/gait_data/dataset.py
+      - data/output/gait/pose_data/stage3/best_params.json
+      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/pose/tuned_yolo/
+    params:
+      - configs/experiments/pose_data/xgb_loao.yaml:
+          - experiment.feature_idx
+    outs:
+      - data/output/gait/pose_data/xgb_loao/manifest.json
+      - data/output/gait/pose_data/xgb_loao/loao.json
+      - data/output/gait/pose_data/xgb_loao/probs/
+
   # ── Stage 4 — leave-one-athlete-out CV for best Optuna trial ─────────────────
   stage4_loao:
     cmd: python -m experiments.gait_detection.pose_data.tcn_leave_one_out --config configs/experiments/pose_data/tcn_leave_one_out.yaml
@@ -322,6 +340,21 @@ stages:
       - data/output/gait/image/stage6/manifest.json
       - data/output/gait/image/stage6/probs/
 
+  # ── XGBoost LOAO — image features ─────────────────────────────────────────────
+  img_xgb_loao:
+    cmd: python -m experiments.gait_detection.image.xgb_loao --config configs/experiments/image/xgb_loao.yaml
+    deps:
+      - experiments/gait_detection/image/xgb_loao.py
+      - src/gait/image/dataset.py
+      - src/gait/detection/metrics.py
+      - data/output/gait/image/stage1/results.json
+      - data/output/gait/image_features/
+      - data/output/annotations/optojump/ml_training_dataset.csv
+    outs:
+      - data/output/gait/image/xgb_loao/manifest.json
+      - data/output/gait/image/xgb_loao/loao.json
+      - data/output/gait/image/xgb_loao/probs/
+
   # ── ResNet linear-head finetune (image) ──────────────────────────────────────
   img_resnet_tune:
     cmd: python -m experiments.gait_detection.image.resnet_tune --config configs/experiments/image/resnet_tune.yaml
@@ -339,6 +372,28 @@ stages:
     outs:
       - data/output/gait/image/resnet/tune/best_params.json
 
+  # ── ResNet LOAO ───────────────────────────────────────────────────────────────
+  img_resnet_loao:
+    cmd: python -m experiments.gait_detection.image.resnet_loao --config configs/experiments/image/resnet_loao.yaml
+    deps:
+      - experiments/gait_detection/image/resnet_loao.py
+      - src/gait/image/finetune.py
+      - src/gait/image/dataset.py
+      - src/gait/detection/metrics.py
+      - data/output/gait/image/resnet/tune/best_params.json
+      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/pose/tuned_yolo/000332/optojump
+      - data/input/optojump/
+    params:
+      - configs/experiments/image/resnet_loao.yaml:
+          - experiment.max_epochs
+          - experiment.early_stopping_patience
+          - experiment.batch_size
+    outs:
+      - data/output/gait/image/resnet/loao/manifest.json
+      - data/output/gait/image/resnet/loao/loao.json
+      - data/output/gait/image/resnet/loao/probs/
+
   img_resnet_train:
     cmd: python -m experiments.gait_detection.image.resnet_train --config configs/experiments/image/resnet_train.yaml
     deps:
@@ -347,6 +402,7 @@ stages:
       - src/gait/image/dataset.py
       - data/output/gait/image_features/
       - data/output/gait/image/resnet/tune/best_params.json
+      - data/output/gait/image/resnet/loao/loao.json
       - data/output/annotations/optojump/ml_training_dataset.csv
     outs:
       - data/output/gait/image/resnet/train/checkpoint.pt:

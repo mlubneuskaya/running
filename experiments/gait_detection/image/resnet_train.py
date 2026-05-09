@@ -153,6 +153,18 @@ if __name__ == "__main__":
     img_size      = _bp.get("img_size",      raw.get("img_size",      224))
     bbox_padding  = _bp.get("bbox_padding",  raw.get("bbox_padding",  0.1))
 
+    loao_json = raw.get("loao_json")
+    if loao_json:
+        with open(loao_json) as _f:
+            _loao = json.load(_f)
+        avg_best_epoch = _loao.get("avg_best_epoch")
+        if avg_best_epoch is not None:
+            logger.info(
+                "Using avg_best_epoch=%d from LOAO (was %d from tuning)",
+                avg_best_epoch, best_epoch,
+            )
+            best_epoch = avg_best_epoch
+
     logger.info(
         "Loaded best params from %s  (epoch=%d  val_macro_f1=%.4f)",
         best_params_json, best_epoch, _bp["best_val_macro_f1"],
