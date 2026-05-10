@@ -154,39 +154,98 @@ def smooth_probs_argmax(probs: np.ndarray, window: int = 5) -> np.ndarray:
     return labels
 
 
+# Allowed transitions in the cyclic 4-state gait model.
+# States: 0=S_L, 1=F_L→R, 2=S_R, 3=F_R→L
+# Each state may self-loop or advance one step clockwise only.
+_CYCLIC_MASK_4 = np.array([
+    [1, 1, 0, 0],  # S_L   → {S_L, F_L→R}
+    [0, 1, 1, 0],  # F_L→R → {F_L→R, S_R}
+    [0, 0, 1, 1],  # S_R   → {S_R, F_R→L}
+    [1, 0, 0, 1],  # F_R→L → {S_L, F_R→L}
+], dtype=np.float64)
+
+
+def labels_3_to_4(labels: np.ndarray) -> np.ndarray:
+    """Split the flight class into direction-aware states.
+
+    3-class input  : 0=left_stance, 1=right_stance, 2=flight
+    4-state output : 0=S_L, 1=F_L→R, 2=S_R, 3=F_R→L
+
+    Each flight frame is assigned based on the most recent preceding stance.
+    Leading flight frames (before any stance) are resolved by looking at the
+    first stance that follows them.
+    """
+    result = np.empty(len(labels), dtype=np.int64)
+    result[labels == 0] = 0  # left_stance  → S_L
+    result[labels == 1] = 2  # right_stance → S_R
+
+    # Forward pass: assign flight frames from preceding stance
+    last_stance = None
+    for i in range(len(labels)):
+        if labels[i] == 0:
+            last_stance = 0
+        elif labels[i] == 1:
+            last_stance = 1
+        else:
+            if last_stance == 0:
+                result[i] = 1   # F_L→R
+            elif last_stance == 1:
+                result[i] = 3   # F_R→L
+            else:
+                result[i] = 1   # placeholder for leading flight
+
+    # Fix leading flight segment (before any stance) using first stance after it
+    if len(labels) > 0 and labels[0] == 2:
+        first_stance = next((labels[i] for i in range(len(labels)) if labels[i] != 2), None)
+        i = 0
+        while i < len(labels) and labels[i] == 2:
+            result[i] = 3 if first_stance == 1 else 1
+            i += 1
+
+    return result
+
+
 def estimate_hmm_params(
     label_sequences: list[np.ndarray],
-    n_classes: int,
-    smoothing: float = 1.0,
+    smoothing: float = 0.0,
+    symmetric: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Estimate start probabilities and transition matrix from label sequences.
+    """Estimate 4-state HMM parameters from 3-class label sequences.
 
-    Parameters
-    ----------
-    label_sequences : list of np.ndarray
-        Per-recording 1-D integer label arrays.
-    n_classes : int
-        Number of label classes.
-    smoothing : float
-        Laplace smoothing count added to every cell before normalisation.
+    Converts each sequence to 4 states (S_L, F_L→R, S_R, F_R→L) via
+    ``labels_3_to_4``, counts transitions, then normalises.
+
+    When ``symmetric=True`` (default) left/right symmetry is enforced by
+    averaging each entry with its mirror under the mapping 0↔2, 1↔3
+    (S_L↔S_R, F_L→R↔F_R→L).  Row sums remain 1 after averaging.
 
     Returns
     -------
-    startprob : np.ndarray, shape (n_classes,)
-    transmat  : np.ndarray, shape (n_classes, n_classes)
+    startprob : np.ndarray, shape (4,)
+    transmat  : np.ndarray, shape (4, 4)
     """
-    start_counts = np.ones(n_classes) * smoothing
-    trans_counts = np.ones((n_classes, n_classes)) * smoothing
+    seqs_4 = [labels_3_to_4(seq) for seq in label_sequences]
 
-    for seq in label_sequences:
+    start_counts = np.ones(4) * smoothing
+    trans_counts = _CYCLIC_MASK_4 * smoothing  # smoothing only on allowed transitions
+    for seq in seqs_4:
         if len(seq) == 0:
             continue
         start_counts[int(seq[0])] += 1
         for i in range(len(seq) - 1):
-            trans_counts[int(seq[i]), int(seq[i + 1])] += 1
+            a, b = int(seq[i]), int(seq[i + 1])
+            if _CYCLIC_MASK_4[a, b]:  # ignore annotation noise violating the cycle
+                trans_counts[a, b] += 1
 
     startprob = start_counts / start_counts.sum()
-    transmat = trans_counts / trans_counts.sum(axis=1, keepdims=True)
+    transmat  = trans_counts / trans_counts.sum(axis=1, keepdims=True)
+
+    if symmetric:
+        mirror = np.array([2, 3, 0, 1])
+        transmat  = (transmat + transmat[np.ix_(mirror, mirror)]) / 2
+        startprob = (startprob + startprob[mirror]) / 2
+        startprob /= startprob.sum()
+
     return startprob, transmat
 
 
@@ -195,34 +254,50 @@ def viterbi_decode(
     transmat: np.ndarray,
     startprob: np.ndarray,
 ) -> np.ndarray:
-    """Viterbi decoding using per-frame softmax emission probabilities.
+    """Viterbi decoding with a 4-state cyclic HMM (S_L, F_L→R, S_R, F_R→L).
 
-    The model's softmax outputs are used directly as emission log-likelihoods
-    inside an HMM whose transition structure was estimated from annotations.
-    Uses hmmlearn for the Viterbi pass.
+    The 3-class model output is mapped to 4-state emissions before decoding
+    and the result is mapped back to 3-class labels:
+
+        Emission mapping  (3-class column → 4-state row):
+            S_L    ← P(left_stance)   [col 0]
+            F_L→R  ← P(flight)        [col 2]
+            S_R    ← P(right_stance)  [col 1]
+            F_R→L  ← P(flight)        [col 2]
+
+        Decoding mapping  (4-state → 3-class):
+            0 S_L   → 0 left_stance
+            1 F_L→R → 2 flight
+            2 S_R   → 1 right_stance
+            3 F_R→L → 2 flight
 
     Parameters
     ----------
     probs : np.ndarray
-        Shape ``(T, n_classes)`` — per-frame softmax probabilities.
+        Shape ``(T, 3)`` — per-frame softmax probabilities from the model.
     transmat : np.ndarray
-        Shape ``(n_classes, n_classes)`` — row-stochastic transition matrix.
+        Shape ``(4, 4)`` — 4-state row-stochastic transition matrix.
     startprob : np.ndarray
-        Shape ``(n_classes,)`` — initial state distribution.
+        Shape ``(4,)`` — 4-state initial state distribution.
 
     Returns
     -------
     np.ndarray
-        Shape ``(T,)`` int64 — Viterbi-decoded class labels.
+        Shape ``(T,)`` int64 — decoded labels in 3-class space.
     """
-    n_classes = probs.shape[1]
-    log_probs = np.log(np.clip(probs, 1e-9, 1.0))
+    emissions = np.stack([
+        probs[:, 0],  # S_L   ← P(left_stance)
+        probs[:, 2],  # F_L→R ← P(flight)
+        probs[:, 1],  # S_R   ← P(right_stance)
+        probs[:, 2],  # F_R→L ← P(flight)
+    ], axis=1).astype(np.float32)
 
-    model = _LogProbHMM(n_components=n_classes, init_params="", params="")
+    log_emissions = np.log(np.clip(emissions, 1e-9, 1.0))
+    model = _LogProbHMM(n_components=4, init_params="", params="")
     model.startprob_ = startprob
-    model.transmat_ = transmat
-    _, decoded = model.decode(log_probs, algorithm="viterbi")
-    return decoded.astype(np.int64)
+    model.transmat_  = transmat
+    _, decoded = model.decode(log_emissions, algorithm="viterbi")
+    return np.array([0, 2, 1, 2], dtype=np.int64)[decoded]
 
 
 def derive_events(
