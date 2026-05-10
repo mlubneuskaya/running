@@ -25,11 +25,14 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
+import re
 
 import mlflow
 import numpy as np
 import optuna
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 import src.gait.detection.dilations as dilation_schedules
@@ -57,11 +60,18 @@ logger = logging.getLogger(__name__)
 
 
 
+def _safe_stem(video_path: str) -> str:
+    stem = os.path.splitext(video_path)[0]
+    return re.sub(r"[/\\]", "_", stem).lstrip("_")
+
+
 @torch.no_grad()
-def _predict(model: torch.nn.Module, rec, device: torch.device) -> np.ndarray:
+def _predict_proba(model: torch.nn.Module, rec, device: torch.device) -> np.ndarray:
+    """Return softmax probabilities, shape (T, n_classes), float32."""
     model.eval()
     x = torch.from_numpy(rec.features).unsqueeze(0).to(device)
-    return model(x).squeeze(0).argmax(dim=-1).cpu().numpy()
+    logits = model(x).squeeze(0)
+    return F.softmax(logits, dim=-1).cpu().numpy().astype(np.float32)
 
 
 def run_loao(
@@ -70,10 +80,13 @@ def run_loao(
     records: list,
     cfg: ExperimentConfig,
     n_features: int,
+    probs_dir: str,
 ) -> dict:
-    n_athletes   = len({r.athlete for r in records})
-    fold_results = []
-    all_cms      = []
+    n_athletes       = len({r.athlete for r in records})
+    fold_results     = []
+    all_cms          = []
+    manifest_records = []
+    os.makedirs(probs_dir, exist_ok=True)
 
     with mlflow.start_run(run_name=f"img_tcn_loao_trial_{trial_id}"):
         mlflow.log_params(params)
@@ -128,10 +141,22 @@ def run_loao(
             fold_y_true, fold_y_pred = [], []
 
             for rec in val_records:
-                raw_pred = _predict(model, rec, device)
+                probs    = _predict_proba(model, rec, device)
+                raw_pred = probs.argmax(axis=1).astype(np.int64)
                 pred     = min_duration_filter(raw_pred, min_frames=3)
                 fold_y_true.append(rec.labels)
                 fold_y_pred.append(pred)
+
+                out_name = _safe_stem(rec.video_path) + ".npy"
+                out_path = os.path.join(probs_dir, out_name)
+                np.save(out_path, probs)
+                manifest_records.append({
+                    "video_path": rec.video_path,
+                    "athlete":    rec.athlete,
+                    "split":      "train",
+                    "n_frames":   int(probs.shape[0]),
+                    "probs_path": out_path,
+                })
 
             y_true = np.concatenate(fold_y_true)
             y_pred = np.concatenate(fold_y_pred)
@@ -175,6 +200,7 @@ def run_loao(
             },
             "total_confusion_matrix": total_cm.tolist(),
             "folds":                  fold_results,
+            "manifest_records":       manifest_records,
         }
 
         mlflow.log_metric("macro_f1_mean", summary["macro_f1_mean"])
@@ -184,7 +210,7 @@ def run_loao(
     return summary
 
 
-def main(cfg: ExperimentConfig, study_cfg: dict, trial_ids: list[int], features_dir: str, video_input_dir: str) -> None:
+def main(cfg: ExperimentConfig, study_cfg: dict, trial_id: int, features_dir: str, video_input_dir: str) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_image_tcn_loao")
 
@@ -201,34 +227,46 @@ def main(cfg: ExperimentConfig, study_cfg: dict, trial_ids: list[int], features_
     study        = load_study(study_cfg, cfg)
     trials_by_id = {t.number: t for t in study.trials}
 
-    summaries = []
-    for trial_id in trial_ids:
-        if trial_id not in trials_by_id:
-            raise KeyError(f"Trial #{trial_id} not found in study '{study.study_name}'.")
-        params = params_from_trial(trials_by_id[trial_id])
-        logger.info("Starting LOAO for trial %d  %s", trial_id, params)
+    if trial_id not in trials_by_id:
+        raise KeyError(f"Trial #{trial_id} not found in study '{study.study_name}'.")
+    params = params_from_trial(trials_by_id[trial_id])
+    logger.info("Starting LOAO for trial %d  %s", trial_id, params)
 
-        summary  = run_loao(trial_id, params, records, cfg, n_features)
-        summaries.append(summary)
-        out_path = cfg.results_path(f"loao_trial_{trial_id}")
-        with open(out_path, "w") as f:
-            json.dump(summary, f, indent=2)
-        logger.info("Results saved to %s", out_path)
+    probs_dir = os.path.join(cfg.output_dir, f"probs_trial")
+    summary   = run_loao(trial_id, params, records, cfg, n_features, probs_dir)
 
-    best = max(summaries, key=lambda s: s["macro_f1_mean"])
+    out_path = cfg.results_path(f"loao_trial")
+    with open(out_path, "w") as f:
+        json.dump({k: v for k, v in summary.items() if k != "manifest_records"}, f, indent=2)
+    logger.info("Results saved to %s", out_path)
+
     loao_best = {
-        "best_trial_id":  best["trial_id"],
-        "best_params":    best["params"],
-        "macro_f1_mean":  best["macro_f1_mean"],
-        "macro_f1_std":   best["macro_f1_std"],
+        "best_trial_id":  summary["trial_id"],
+        "best_params":    summary["params"],
+        "macro_f1_mean":  summary["macro_f1_mean"],
+        "macro_f1_std":   summary["macro_f1_std"],
     }
     best_path = cfg.results_path("loao_best")
     with open(best_path, "w") as f:
         json.dump(loao_best, f, indent=2)
     logger.info(
         "Best trial: %d  macro_F1=%.3f ± %.3f  → %s",
-        best["trial_id"], best["macro_f1_mean"], best["macro_f1_std"], best_path,
+        summary["trial_id"], summary["macro_f1_mean"], summary["macro_f1_std"], best_path,
     )
+
+    manifest = {
+        "trial_id":    summary["trial_id"],
+        "params":      summary["params"],
+        "n_classes":   cfg.n_classes,
+        "class_names": cfg.class_names,
+        "fps":         cfg.fps,
+        "test_athletes": list(test_athletes),
+        "records":     summary["manifest_records"],
+    }
+    manifest_path = cfg.results_path("manifest")
+    with open(manifest_path, "w") as f:
+        json.dump(manifest, f, indent=2)
+    logger.info("Manifest saved → %s  (%d records)", manifest_path, len(manifest["records"]))
 
 
 if __name__ == "__main__":
@@ -241,31 +279,22 @@ if __name__ == "__main__":
 
     cfg             = ExperimentConfig(**raw.get("experiment", {}))
     study_cfg       = raw.get("study", {})
-    trial_ids       = raw.get("trial_ids", [])
     best_params_json= raw.get("best_params_json")
     features_dir    = raw["features_dir"]
     video_input_dir = raw.get("video_input_dir", "data/input/optojump")
 
-    if not trial_ids:
-        if best_params_json:
-            with open(best_params_json) as _f:
-                _bp = json.load(_f)
-        #     top_trials = _bp.get("top_trials")
-        #     if top_trials:
-        #         trial_ids = [t["trial_id"] for t in top_trials]
-        #         logger.info(
-        #             "Auto-selected %d trials from top_trials in %s: %s",
-        #             len(trial_ids), best_params_json, trial_ids,
-        #         )
-        #     else:
-                trial_ids = [_bp["best_trial_id"]]
-                logger.info("Auto-selected trial %d from %s", trial_ids[0], best_params_json)
-        else:
-            raise ValueError(
-                "'trial_ids' is empty and 'best_params_json' is not set."
-            )
+    try:
+        with open(best_params_json) as _f:
+            _bp = json.load(_f)
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            "'best_params_json' is not set. "
+            "Point 'best_params_json' at the stage2 best_params.json file."
+        )
+    trial_id = _bp["best_trial_id"]
+    logger.info("Auto-selected trial %d from %s", trial_id, best_params_json)
     if not study_cfg:
         raise ValueError("'study' section is missing in the config.")
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    main(cfg, study_cfg, trial_ids, features_dir, video_input_dir)
+    main(cfg, study_cfg, trial_id, features_dir, video_input_dir)
