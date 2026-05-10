@@ -37,10 +37,8 @@ from src.gait.detection.metrics import (
     aggregate_confusion_matrices,
     confusion_matrix,
     per_class_f1,
-    timing_error_full,
 )
 from src.gait.detection.model import TCN
-from src.gait.detection.postprocess import derive_events, min_duration_filter
 from src.gait.detection.train import TrainerConfig, Trainer, seed_everything
 from src.gait.gait_data.dataset import (
     GaitSequenceDataset,
@@ -144,15 +142,10 @@ def run_loao(
 
             device = next(model.parameters()).device
             fold_y_true, fold_y_pred = [], []
-            timing_errs: dict[str, list[dict]] = {
-                "left_landing": [], "left_takeoff": [],
-                "right_landing": [], "right_takeoff": [],
-            }
 
             for rec in val_records:
-                probs    = _predict_proba(model, rec, device, cfg.feature_idx)
-                raw_pred = probs.argmax(axis=1).astype(np.int64)
-                pred     = min_duration_filter(raw_pred, min_frames=3)
+                probs = _predict_proba(model, rec, device, cfg.feature_idx)
+                pred  = probs.argmax(axis=1).astype(np.int64)
                 fold_y_true.append(rec.labels)
                 fold_y_pred.append(pred)
 
@@ -167,20 +160,11 @@ def run_loao(
                     "probs_path": out_path,
                 })
 
-                gt_events   = derive_events(rec.labels, fps=cfg.fps)
-                pred_events = derive_events(pred, fps=cfg.fps)
-                for key in timing_errs:
-                    timing_errs[key].append(timing_error_full(pred_events[key], gt_events[key], cfg.fps))
-
             y_true = np.concatenate(fold_y_true)
             y_pred = np.concatenate(fold_y_pred)
             f1     = per_class_f1(y_true, y_pred, n_classes=cfg.n_classes, class_names=cfg.class_names)
             cm     = confusion_matrix(y_true, y_pred, n_classes=cfg.n_classes)
             all_cms.append(cm)
-
-            def _mean(lst, unit):
-                vals = [d[unit] for d in lst if not np.isnan(d[unit])]
-                return float(np.mean(vals)) if vals else float("nan")
 
             fold_results.append({
                 "athlete":          athlete,
@@ -188,15 +172,6 @@ def run_loao(
                 "f1":               f1,
                 "confusion_matrix": cm.tolist(),
                 "training":         train_result,
-                "timing_error": {
-                    key: {
-                        "ms":            _mean(timing_errs[key], "ms"),
-                        "frames":        _mean(timing_errs[key], "frames"),
-                        "signed_ms":     _mean(timing_errs[key], "signed_ms"),
-                        "signed_frames": _mean(timing_errs[key], "signed_frames"),
-                    }
-                    for key in timing_errs
-                },
             })
 
             with mlflow.start_run(run_name=f"fold_{athlete}", nested=True):

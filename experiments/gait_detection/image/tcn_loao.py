@@ -44,7 +44,6 @@ from src.gait.detection.metrics import (
     per_class_f1,
 )
 from src.gait.detection.model import TCN
-from src.gait.detection.postprocess import min_duration_filter
 from src.gait.detection.train import Trainer, TrainerConfig, seed_everything
 from src.gait.gait_data.dataset import (
     GaitSequenceDataset,
@@ -141,9 +140,8 @@ def run_loao(
             fold_y_true, fold_y_pred = [], []
 
             for rec in val_records:
-                probs    = _predict_proba(model, rec, device)
-                raw_pred = probs.argmax(axis=1).astype(np.int64)
-                pred     = min_duration_filter(raw_pred, min_frames=3)
+                probs = _predict_proba(model, rec, device)
+                pred  = probs.argmax(axis=1).astype(np.int64)
                 fold_y_true.append(rec.labels)
                 fold_y_pred.append(pred)
 
