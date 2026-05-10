@@ -4,7 +4,7 @@ Trains the complete ResNet backbone + linear head (all weights unfrozen) on
 cropped video frames.  Differential learning rates allow the backbone to be
 updated more conservatively than the head.
 
-Objective: maximise macro F1 on the fixed tuning validation split.
+Objective: minimise validation cross-entropy loss on the fixed tuning validation split.
 
 Usage
 -----
@@ -24,14 +24,12 @@ import logging
 import os
 
 import mlflow
-import numpy as np
 import optuna
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from experiments.gait_detection.config import ExperimentConfig
-from src.gait.detection.metrics import per_class_f1
 from src.gait.detection.train import get_device, seed_everything
 from src.gait.gait_data.dataset import train_test_split, tuning_split
 from src.gait.image.dataset import load_image_records_for_finetune
@@ -74,22 +72,18 @@ def _train_epoch(
 
 
 @torch.no_grad()
-def _val_f1(
+def _val_loss(
     model: nn.Module,
     val_loader: DataLoader,
     device: torch.device,
-    n_classes: int,
-    class_names: list[str],
 ) -> float:
     model.eval()
-    y_true_all, y_pred_all = [], []
+    criterion = nn.CrossEntropyLoss()
+    total = 0.0
     for X, y in val_loader:
-        X = X.to(device)
-        y_pred_all.append(model(X).argmax(dim=-1).cpu().numpy())
-        y_true_all.append(y.numpy())
-    y_true = np.concatenate(y_true_all)
-    y_pred = np.concatenate(y_pred_all)
-    return per_class_f1(y_true, y_pred, n_classes=n_classes, class_names=class_names)["macro"]
+        X, y = X.to(device), y.to(device)
+        total += criterion(model(X), y).item()
+    return total / max(len(val_loader), 1)
 
 
 def objective(
@@ -120,20 +114,20 @@ def objective(
     )
     criterion = nn.CrossEntropyLoss()
 
-    best_f1          = 0.0
-    best_epoch       = 0
+    best_val_loss    = float("inf")
+    best_epoch       = 1
     patience_counter = 0
 
     for epoch in range(1, cfg.max_epochs + 1):
         _train_epoch(model, train_loader, optimizer, criterion, device, cfg.max_grad_norm)
-        f1 = _val_f1(model, val_loader, device, cfg.n_classes, cfg.class_names)
+        loss = _val_loss(model, val_loader, device)
 
-        trial.report(f1, epoch)
+        trial.report(loss, epoch)
         if trial.should_prune():
             raise optuna.exceptions.TrialPruned()
 
-        if f1 > best_f1:
-            best_f1          = f1
+        if loss < best_val_loss:
+            best_val_loss    = loss
             best_epoch       = epoch
             patience_counter = 0
         else:
@@ -145,10 +139,10 @@ def objective(
 
     with mlflow.start_run(run_name=f"trial_{trial.number}", nested=True):
         mlflow.log_params(params)
-        mlflow.log_metric("best_val_macro_f1", best_f1)
-        mlflow.log_metric("best_epoch",        best_epoch)
+        mlflow.log_metric("best_val_loss", best_val_loss)
+        mlflow.log_metric("best_epoch",    best_epoch)
 
-    return best_f1
+    return best_val_loss
 
 
 def main(
@@ -193,7 +187,7 @@ def main(
     val_loader   = DataLoader(val_ds,   batch_size=cfg.batch_size, shuffle=False, num_workers=0)
 
     study = optuna.create_study(
-        direction="maximize",
+        direction="minimize",
         sampler=optuna.samplers.TPESampler(seed=cfg.random_seed),
         pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=10),
     )
@@ -215,22 +209,22 @@ def main(
 
         best_params = study.best_params
         best_epoch  = study.best_trial.user_attrs.get("best_epoch", cfg.max_epochs)
-        logger.info("Best macro F1 : %.4f  (epoch %d)", study.best_value, best_epoch)
+        logger.info("Best val loss : %.4f  (epoch %d)", study.best_value, best_epoch)
         logger.info("Best params   : %s", best_params)
 
-        mlflow.log_metric("best_val_macro_f1", study.best_value)
-        mlflow.log_metric("best_epoch",        best_epoch)
+        mlflow.log_metric("best_val_loss", study.best_value)
+        mlflow.log_metric("best_epoch",    best_epoch)
         for k, v in best_params.items():
             mlflow.log_param(f"best_{k}", v)
 
     os.makedirs(cfg.output_dir, exist_ok=True)
     out = {
-        "best_params":       best_params,
-        "best_val_macro_f1": study.best_value,
-        "best_epoch":        best_epoch,
-        "backbone_name":     backbone_name,
-        "img_size":          img_size,
-        "bbox_padding":      bbox_padding,
+        "best_params":   best_params,
+        "best_val_loss": study.best_value,
+        "best_epoch":    best_epoch,
+        "backbone_name": backbone_name,
+        "img_size":      img_size,
+        "bbox_padding":  bbox_padding,
     }
     out_path = cfg.results_path("best_params")
     with open(out_path, "w") as f:

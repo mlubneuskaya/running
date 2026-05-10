@@ -41,6 +41,7 @@ from src.gait.detection.metrics import (
     per_class_f1,
 )
 from src.gait.detection.train import get_device, seed_everything
+
 from src.gait.gait_data.dataset import loao_splits, train_test_split
 from src.gait.image.dataset import load_image_records_for_finetune
 from src.gait.image.finetune import FrameCropDataset, ResNetFinetune
@@ -76,22 +77,18 @@ def _train_epoch(
 
 
 @torch.no_grad()
-def _val_f1(
+def _val_loss(
     model: nn.Module,
     val_loader: DataLoader,
     device: torch.device,
-    n_classes: int,
-    class_names: list[str],
 ) -> float:
     model.eval()
-    y_true_all, y_pred_all = [], []
+    criterion = nn.CrossEntropyLoss()
+    total = 0.0
     for X, y in val_loader:
-        X = X.to(device)
-        y_pred_all.append(model(X).argmax(dim=-1).cpu().numpy())
-        y_true_all.append(y.numpy())
-    y_true = np.concatenate(y_true_all)
-    y_pred = np.concatenate(y_pred_all)
-    return per_class_f1(y_true, y_pred, n_classes=n_classes, class_names=class_names)["macro"]
+        X, y = X.to(device), y.to(device)
+        total += criterion(model(X), y).item()
+    return total / max(len(val_loader), 1)
 
 
 @torch.no_grad()
@@ -158,16 +155,16 @@ def run_fold(
     criterion = nn.CrossEntropyLoss()
     model, optimizer = _build_model(params, backbone_name, cfg.n_classes, device)
 
-    best_f1          = 0.0
-    best_epoch       = 0
+    best_val_loss    = float("inf")
+    best_epoch       = 1
     patience_counter = 0
 
     for epoch in range(1, cfg.max_epochs + 1):
         _train_epoch(model, train_loader, optimizer, criterion, device, cfg.max_grad_norm)
-        f1 = _val_f1(model, val_loader, device, cfg.n_classes, cfg.class_names)
+        loss = _val_loss(model, val_loader, device)
 
-        if f1 > best_f1:
-            best_f1          = f1
+        if loss < best_val_loss:
+            best_val_loss    = loss
             best_epoch       = epoch
             patience_counter = 0
         else:
@@ -176,7 +173,7 @@ def run_fold(
                 break
 
         if epoch % 10 == 0:
-            logger.info("    Epoch %3d  val_macro_f1=%.4f  best=%d", epoch, f1, best_epoch)
+            logger.info("    Epoch %3d  val_loss=%.4f  best=%d", epoch, loss, best_epoch)
 
     val_probs = [
         _get_probs(model, rec_info, img_size, bbox_padding, cfg.batch_size, device)
@@ -186,7 +183,7 @@ def run_fold(
     y_true = np.concatenate([rec_info[0].labels for rec_info in val_info])
     y_pred = np.concatenate([p.argmax(axis=1) for p in val_probs])
 
-    train_result = {"best_epoch": best_epoch, "best_val_f1": float(best_f1)}
+    train_result = {"best_epoch": best_epoch, "best_val_loss": float(best_val_loss)}
     return train_result, y_true, y_pred, val_probs
 
 
@@ -276,15 +273,15 @@ def main(
             fold_results.append(fold_result)
 
             with mlflow.start_run(run_name=f"fold_{athlete}", nested=True):
-                mlflow.log_metric("macro_f1",    f1["macro"])
-                mlflow.log_metric("best_epoch",  train_result["best_epoch"])
-                mlflow.log_metric("best_val_f1", train_result["best_val_f1"])
+                mlflow.log_metric("macro_f1",     f1["macro"])
+                mlflow.log_metric("best_epoch",   train_result["best_epoch"])
+                mlflow.log_metric("best_val_loss", train_result["best_val_loss"])
                 for cls in cfg.class_names:
                     mlflow.log_metric(f"f1_{cls}", f1[cls])
 
             logger.info(
-                "  best_epoch=%d  F1 macro=%.3f  left=%.3f  right=%.3f  flight=%.3f",
-                train_result["best_epoch"], f1["macro"],
+                "  best_epoch=%d  val_loss=%.4f  F1 macro=%.3f  left=%.3f  right=%.3f  flight=%.3f",
+                train_result["best_epoch"], train_result["best_val_loss"], f1["macro"],
                 f1["left_stance"], f1["right_stance"], f1["flight"],
             )
 
