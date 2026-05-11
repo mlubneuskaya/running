@@ -167,7 +167,7 @@ if __name__ == "__main__":
 
     logger.info(
         "Loaded best params from %s  (epoch=%d  val_macro_f1=%.4f)",
-        best_params_json, best_epoch, _bp["best_val_macro_f1"],
+        best_params_json, best_epoch, _bp["best_val_loss"],
     )
 
     main(cfg, best_params, best_epoch, backbone_name, img_size, bbox_padding, pose_dir, video_input_dir)

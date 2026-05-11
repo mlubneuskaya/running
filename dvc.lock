@@ -1094,8 +1094,8 @@ stages:
       nfiles: 178
     - path: experiments/gait_detection/image/resnet_tune.py
       hash: md5
-      md5: cc15bcc8ffe5e62b8b6e5a800f12d35e
-      size: 9378
+      md5: f6a86bf3196f2ce1498d10a257b4f9bc
+      size: 9095
     - path: src/gait/image/dataset.py
       hash: md5
       md5: 6296e9b0617650e8104940ecf4c8a593
@@ -1131,8 +1131,8 @@ stages:
     outs:
     - path: data/output/gait/image/resnet/tune/best_params.json
       hash: md5
-      md5: ee8976d4d6d88b900ac4482582b08ba3
-      size: 321
+      md5: 61b593b90c52cae644450184df825358
+      size: 316
   img_resnet_train:
     cmd: python -m experiments.gait_detection.image.resnet_train --config 
       configs/experiments/image/resnet_train.yaml
@@ -1143,12 +1143,12 @@ stages:
       size: 1902774
     - path: data/output/gait/image/resnet/loao/loao.json
       hash: md5
-      md5: 7673ddc8273c114c29b233946d58b8ae
-      size: 12257
+      md5: 2328cbd6134f11ef1df762c6229d6e0f
+      size: 12292
     - path: data/output/gait/image/resnet/tune/best_params.json
       hash: md5
-      md5: ee8976d4d6d88b900ac4482582b08ba3
-      size: 321
+      md5: 61b593b90c52cae644450184df825358
+      size: 316
     - path: data/output/gait/image_features/
       hash: md5
       md5: f98957d492933c8b91a66fdb1815ea3e.dir
@@ -1156,8 +1156,8 @@ stages:
       nfiles: 178
     - path: experiments/gait_detection/image/resnet_train.py
       hash: md5
-      md5: b5627c71d3ca5c4fd01c1883d61fc998
-      size: 6046
+      md5: 7ad5af0756676853127db60f39247da2
+      size: 6042
     - path: src/gait/image/dataset.py
       hash: md5
       md5: 6296e9b0617650e8104940ecf4c8a593
@@ -1169,12 +1169,12 @@ stages:
     outs:
     - path: data/output/gait/image/resnet/train/checkpoint.pt
       hash: md5
-      md5: 3b3e187cfaf7f3d9ce638d2ce6abff79
+      md5: 91a2f04dffcac05170b409b22e1b6a1a
       size: 44793547
     - path: data/output/gait/image/resnet/train/resnet_training.json
       hash: md5
-      md5: 62e4b4782d0ba86196a892fd255a7da7
-      size: 375
+      md5: df4d7587a9102ca35537f843d36c0698
+      size: 372
   img_resnet_infer:
     cmd: python -m experiments.gait_detection.image.resnet_infer --config 
       configs/experiments/image/resnet_infer.yaml
@@ -1185,12 +1185,12 @@ stages:
       size: 1902774
     - path: data/output/gait/image/resnet/train/checkpoint.pt
       hash: md5
-      md5: 2a3eb1de4f991e3543585d808c9512e3
+      md5: 91a2f04dffcac05170b409b22e1b6a1a
       size: 44793547
     - path: data/output/gait/image/resnet/tune/best_params.json
       hash: md5
-      md5: ee8976d4d6d88b900ac4482582b08ba3
-      size: 321
+      md5: 61b593b90c52cae644450184df825358
+      size: 316
     - path: data/output/gait/image_features/
       hash: md5
       md5: f98957d492933c8b91a66fdb1815ea3e.dir
@@ -1211,11 +1211,11 @@ stages:
     outs:
     - path: data/output/gait/image/resnet/infer/manifest.json
       hash: md5
-      md5: 941d498b1367d0d87f44ce501c1613bb
-      size: 50322
+      md5: 35d706a1fc24bfc202d10bd3bd79a86b
+      size: 50321
     - path: data/output/gait/image/resnet/infer/probs/
       hash: md5
-      md5: 1525823f6da0e1bc8fd46139522daf34.dir
+      md5: 1e90adf5d903113ee311c9f0cce9fa81.dir
       size: 297980
       nfiles: 178
   pose_xgb_loao:
@@ -1299,8 +1299,8 @@ stages:
       size: 1902774
     - path: data/output/gait/image/resnet/tune/best_params.json
       hash: md5
-      md5: ee8976d4d6d88b900ac4482582b08ba3
-      size: 321
+      md5: 61b593b90c52cae644450184df825358
+      size: 316
     - path: data/output/pose/tuned_yolo/000332/optojump
       hash: md5
       md5: 438f76e033a312b6c2fe521467273db9.dir
@@ -1308,8 +1308,8 @@ stages:
       nfiles: 180
     - path: experiments/gait_detection/image/resnet_loao.py
       hash: md5
-      md5: 30caabf3c5f614a9b1836e3de17a434d
-      size: 13336
+      md5: 15e1902467996c191cadc9122c75d430
+      size: 13188
     - path: src/gait/detection/metrics.py
       hash: md5
       md5: 917f2f5c4d939e15898eb419d6c68bff
@@ -1330,15 +1330,15 @@ stages:
     outs:
     - path: data/output/gait/image/resnet/loao/loao.json
       hash: md5
-      md5: 7673ddc8273c114c29b233946d58b8ae
-      size: 12257
+      md5: 2328cbd6134f11ef1df762c6229d6e0f
+      size: 12292
     - path: data/output/gait/image/resnet/loao/manifest.json
       hash: md5
-      md5: 80e99d70c0acdc6875d20e8694d9ad3c
-      size: 45760
+      md5: cddb0d2acd22b3a75cfb6e7a384e3d81
+      size: 45759
     - path: data/output/gait/image/resnet/loao/probs/
       hash: md5
-      md5: 8316cb333c088bb9acbd87d1b1bec29c.dir
+      md5: 0a2772545313e90ed4c32545fa4e6af0.dir
       size: 271416
       nfiles: 162
   img_xgb_loao:
