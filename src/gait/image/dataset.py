@@ -22,6 +22,7 @@ from src.gait.gait_data.dataset import (
     VideoRecord,
     _annotation_to_labels,
     _athlete_from_path,
+    _athlete_key,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ def load_image_dataset(
     annotations_csv: str,
     features_dir: str,
     video_input_dir: str = "data/input/optojump",
+    dataset: str = "",
 ) -> list[VideoRecord]:
     """Load annotated videos using pre-extracted CNN feature files.
 
@@ -52,6 +54,10 @@ def load_image_dataset(
         Directory where img_feature_extract.py saved the .npy files.
     video_input_dir : str
         Root of the video input tree (used to compute relative paths).
+    dataset : str
+        Dataset tag written into every ``VideoRecord.dataset``.  When set,
+        ``record.athlete`` is ``"{dataset}:{person_id}"``; otherwise the legacy
+        path-derived name is used.
 
     Returns
     -------
@@ -90,11 +96,14 @@ def load_image_dataset(
                 f"first_ann={first_ann}, last_ann={last_ann}, T={T}"
             )
 
+        person_id = int(group["person_id"].iloc[0]) if "person_id" in group.columns else -1
         records.append(VideoRecord(
             video_path=video_path,
-            athlete=_athlete_from_path(video_path),
+            athlete=_athlete_key(video_path, person_id, dataset),
             features=features[start_idx:end_idx],
             labels=labels[start_idx:end_idx],
+            person_id=person_id,
+            dataset=dataset,
         ))
 
     logger.info("Loaded %d image records from %s", len(records), features_dir)
@@ -105,8 +114,16 @@ def load_image_records_for_finetune(
     annotations_csv: str,
     pose_dir: str,
     video_input_dir: str = "data/input/optojump",
+    dataset: str = "",
 ) -> list[tuple[VideoRecord, str, int]]:
     """Load annotation info for full-network fine-tuning (no pre-extracted features).
+
+    Parameters
+    ----------
+    dataset : str
+        Dataset tag written into every ``VideoRecord.dataset``.  When set,
+        ``record.athlete`` is ``"{dataset}:{person_id}"``; otherwise the legacy
+        path-derived name is used.
 
     Returns
     -------
@@ -140,12 +157,15 @@ def load_image_records_for_finetune(
         start_idx = max(0, first_ann - ANNOTATION_PADDING)
         end_idx   = min(T, last_ann  + ANNOTATION_PADDING + 1)
 
+        person_id = int(group["person_id"].iloc[0]) if "person_id" in group.columns else -1
         out.append((
             VideoRecord(
                 video_path=video_path,
-                athlete=_athlete_from_path(video_path),
+                athlete=_athlete_key(video_path, person_id, dataset),
                 features=np.empty((end_idx - start_idx, 0), dtype=np.float32),
                 labels=labels[start_idx:end_idx],
+                person_id=person_id,
+                dataset=dataset,
             ),
             pose_path,
             start_idx,
