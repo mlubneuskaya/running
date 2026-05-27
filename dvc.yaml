@@ -355,6 +355,37 @@ stages:
       - data/output/gait/image/xgb_loao/loao.json
       - data/output/gait/image/xgb_loao/probs/
 
+  # ── XGBoost inference — pose data ────────────────────────────────────────────
+  pose_xgb_infer:
+    cmd: python -m experiments.gait_detection.pose_data.xgb_infer --config configs/experiments/pose_data/xgb_inference.yaml
+    deps:
+      - experiments/gait_detection/pose_data/xgb_infer.py
+      - src/gait/gait_data/dataset.py
+      - src/gait/detection/train.py
+      - data/output/gait/pose_data/stage3/best_params.json
+      - data/output/annotations/optojump/visibility_annotations.csv
+      - data/output/pose/tuned_yolo/
+    params:
+      - configs/experiments/pose_data/xgb_inference.yaml:
+          - experiment.feature_idx
+    outs:
+      - data/output/gait/pose_data/xgb_infer/manifest.json
+      - data/output/gait/pose_data/xgb_infer/probs/
+
+  # ── XGBoost inference — image features ───────────────────────────────────────
+  img_xgb_infer:
+    cmd: python -m experiments.gait_detection.image.xgb_infer --config configs/experiments/image/xgb_inference.yaml
+    deps:
+      - experiments/gait_detection/image/xgb_infer.py
+      - src/gait/image/dataset.py
+      - src/gait/detection/train.py
+      - data/output/gait/image/stage1/results.json
+      - data/output/gait/image_features/
+      - data/output/annotations/optojump/visibility_annotations.csv
+    outs:
+      - data/output/gait/image/xgb_infer/manifest.json
+      - data/output/gait/image/xgb_infer/probs/
+
   # ── ResNet linear-head finetune (image) ──────────────────────────────────────
   img_resnet_tune:
     cmd: python -m experiments.gait_detection.image.resnet_tune --config configs/experiments/image/resnet_tune.yaml
