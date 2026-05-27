@@ -66,14 +66,14 @@ def train_epoch(
 
 
 def calculate_loss(criterion: nn.Module, feats, labels, masks, model: nn.Module) -> nn.modules.loss._Loss:
-    log_probs = model(feats)  # (B, T, C)
+    logits = model(feats)  # (B, T, C)
 
     # Flatten, apply mask
-    B, T, C = log_probs.shape
-    log_probs_flat = log_probs.reshape(B * T, C)[masks.reshape(-1)]
+    B, T, C = logits.shape
+    logits_flat = logits.reshape(B * T, C)[masks.reshape(-1)]
     labels_flat = labels.reshape(B * T)[masks.reshape(-1)]
 
-    loss = criterion(log_probs_flat, labels_flat)
+    loss = criterion(logits_flat, labels_flat)
     return loss
 
 
@@ -123,7 +123,7 @@ class Trainer:
     ----------
     model : nn.Module
     class_weights : torch.Tensor
-        Per-class weights for weighted NLL loss.
+        Per-class weights for weighted cross-entropy loss.
     config : TrainerConfig
     trial : optuna.Trial | None
         If provided, calls ``trial.report`` and ``trial.should_prune`` each epoch.
@@ -141,7 +141,7 @@ class Trainer:
         self.model = model.to(self.device)
         self.trial = trial
 
-        self.criterion = nn.NLLLoss(
+        self.criterion = nn.CrossEntropyLoss(
             weight=class_weights.to(self.device)
         )
         self.optimizer = torch.optim.Adam(model.parameters(), lr=self.config.lr)

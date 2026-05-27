@@ -93,7 +93,7 @@ def train_trial(
     device        = get_device()
     model         = model.to(device)
     class_weights = compute_class_weights(records, n_classes=cfg.n_classes).to(device)
-    criterion     = nn.NLLLoss(weight=class_weights)
+    criterion     = nn.CrossEntropyLoss(weight=class_weights)
     optimizer     = torch.optim.Adam(model.parameters(), lr=params["lr"])
     scheduler     = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode="min", factor=cfg.lr_schedule_factor, patience=cfg.lr_schedule_patience,

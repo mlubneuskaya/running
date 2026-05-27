@@ -47,14 +47,32 @@ class VideoRecord:
     """Feature array and frame-level labels for one video."""
 
     video_path: str
-    athlete: str
-    features: np.ndarray     # (T, 22) float32
-    labels: np.ndarray       # (T,)    int64
+    athlete: str          # unique athlete key — "{dataset}:{person_id}" when dataset is set
+    features: np.ndarray  # (T, 22) float32
+    labels: np.ndarray    # (T,)    int64
+    person_id: int = -1   # numeric athlete ID from the annotation CSV
+    dataset: str = ""     # source dataset name (e.g. "optojump", "tempos")
 
 
 def _athlete_from_path(video_path: str) -> str:
+    """Legacy name-based athlete key, used only when no dataset tag is given."""
     parts = os.path.splitext(os.path.basename(video_path))[0].split("_")
     return "_".join(parts[:-1])  # strip trailing test-id
+
+
+def _athlete_key(video_path: str, person_id: int, dataset: str) -> str:
+    """Return the appropriate athlete key.
+
+    When *dataset* is set, returns ``"{dataset}:{person_id}"`` — a stable,
+    cross-dataset-unique identifier that works even when filenames carry no
+    name (e.g. tempos: ``1.MP4``).
+
+    Falls back to the legacy path-derived name when *dataset* is empty so that
+    callers that have not yet adopted the dataset tag are unaffected.
+    """
+    if dataset:
+        return f"{dataset}:{person_id}"
+    return _athlete_from_path(video_path)
 
 
 def _pose_path(video_path: str) -> str:
@@ -180,11 +198,19 @@ def _annotation_to_labels(
 def load_dataset_with_pose(
     annotations_csv: str,
     fps: float = float(RECORDING_FPS),
+    dataset: str = "",
 ) -> list[tuple[VideoRecord, pd.DataFrame]]:
     """Like :func:`load_dataset` but also returns the clipped pose DataFrame.
 
     The pose DataFrame is clipped to exactly the same window as the VideoRecord's
     features and labels, so ``len(pose_df) == len(record.labels)`` for every pair.
+
+    Parameters
+    ----------
+    dataset : str
+        Dataset tag written into every ``VideoRecord.dataset``.  When set,
+        ``record.athlete`` is ``"{dataset}:{person_id}"``; otherwise the legacy
+        path-derived name is used.
 
     Returns
     -------
@@ -214,23 +240,36 @@ def load_dataset_with_pose(
         labels = labels[start_idx:end_idx]
         pose_df = smooth.iloc[start_idx:end_idx].reset_index(drop=True)
 
-        athlete = _athlete_from_path(video_path)
+        person_id = int(group["person_id"].iloc[0]) if "person_id" in group.columns else -1
         record = VideoRecord(
             video_path=video_path,
-            athlete=athlete,
+            athlete=_athlete_key(video_path, person_id, dataset),
             features=feats,
             labels=labels,
+            person_id=person_id,
+            dataset=dataset,
         )
         out.append((record, pose_df))
 
     return out
 
 
-def load_dataset(annotations_csv: str, fps: float = float(RECORDING_FPS)) -> list[VideoRecord]:
+def load_dataset(
+    annotations_csv: str,
+    fps: float = float(RECORDING_FPS),
+    dataset: str = "",
+) -> list[VideoRecord]:
     """Load all annotated videos into VideoRecord objects.
 
     Videos whose pose JSON is missing or whose smoothed DataFrame is empty
     are silently skipped.
+
+    Parameters
+    ----------
+    dataset : str
+        Dataset tag written into every ``VideoRecord.dataset``.  When set,
+        ``record.athlete`` is ``"{dataset}:{person_id}"``; otherwise the legacy
+        path-derived name is used.
     """
     ann_df = pd.read_csv(annotations_csv)
     records: list[VideoRecord] = []
@@ -254,14 +293,50 @@ def load_dataset(annotations_csv: str, fps: float = float(RECORDING_FPS)) -> lis
         feats  = feats[start_idx:end_idx]
         labels = labels[start_idx:end_idx]
 
-        athlete = _athlete_from_path(video_path)
+        person_id = int(group["person_id"].iloc[0]) if "person_id" in group.columns else -1
         records.append(VideoRecord(
             video_path=video_path,
-            athlete=athlete,
+            athlete=_athlete_key(video_path, person_id, dataset),
             features=feats,
             labels=labels,
+            person_id=person_id,
+            dataset=dataset,
         ))
 
+    return records
+
+
+def load_datasets(
+    csv_paths: dict[str, str],
+    fps: float = float(RECORDING_FPS),
+) -> list[VideoRecord]:
+    """Load and combine multiple datasets.
+
+    Parameters
+    ----------
+    csv_paths : dict[str, str]
+        Mapping from dataset name to annotation CSV path.  Each record will
+        have ``record.dataset`` set to the dict key and ``record.athlete`` set
+        to ``"{dataset_name}:{person_id}"``.
+    fps : float
+        Recording frame rate.
+
+    Returns
+    -------
+    list[VideoRecord]
+        Combined records from all datasets, tagged by dataset name.
+
+    Example
+    -------
+    >>> records = load_datasets(
+    ...     {"optojump": "data/output/annotations/optojump/visibility_annotations.csv",
+    ...      "tempos":   "data/output/annotations/tempos/ml_labels.csv"},
+    ...     fps=120.0,
+    ... )
+    """
+    records: list[VideoRecord] = []
+    for dataset_name, csv_path in csv_paths.items():
+        records.extend(load_dataset(csv_path, fps=fps, dataset=dataset_name))
     return records
 
 
@@ -354,30 +429,63 @@ _TEST_SPLIT_FRACTION = 0.10
 
 def train_test_split(
     records: list[VideoRecord],
+    n_test: dict[str, int] | None = None,
+    seed: int = _TEST_SPLIT_SEED,
 ) -> tuple[list[VideoRecord], list[VideoRecord], list[str]]:
     """Randomly split records into train and test sets at the athlete level.
 
-    The split is fully deterministic: athlete list is sorted before sampling so
-    adding new videos for existing athletes never changes which athletes end up
-    in the test set.  Test size = floor(n_athletes * 0.10).
+    The split is fully deterministic: athlete lists are sorted before sampling
+    so adding new videos for existing athletes never shifts the test set.
+
+    Parameters
+    ----------
+    records : list[VideoRecord]
+        All records to split.
+    n_test : dict[str, int] | None
+        How many athletes from each dataset go to the test split.
+        Keys must match the ``record.dataset`` values of the records you pass.
+        Example: ``{"optojump": 3, "tempos": 2}`` — draws 3 athletes from the
+        optojump subset and 2 from the tempos subset independently.
+
+        When ``None`` (default / legacy mode) all records are pooled together
+        and ``floor(n_athletes × 0.10)`` athletes are sampled as a test set.
+        This path is kept for backward compatibility with single-dataset runs.
+    seed : int
+        Random seed for reproducibility. Default ``42``.
 
     Returns
     -------
     (train_records, test_records, test_athletes)
+        ``test_athletes`` is a sorted list of ``record.athlete`` strings.
     """
-    athletes = sorted({r.athlete for r in records})
-    n_test   = int(len(athletes) * _TEST_SPLIT_FRACTION)
-    if n_test == 0:
-        raise ValueError(
-            f"Dataset has {len(athletes)} athletes; "
-            f"floor({len(athletes)} × {_TEST_SPLIT_FRACTION}) = 0 test athletes."
-        )
-    rng          = np.random.default_rng(_TEST_SPLIT_SEED)
-    test_athletes = sorted(rng.choice(athletes, n_test, replace=False).tolist())
-    test_set      = set(test_athletes)
+    rng = np.random.default_rng(seed)
+
+    if n_test is None:
+        # ── Legacy single-pool behaviour ─────────────────────────────────────
+        athletes = sorted({r.athlete for r in records})
+        k = int(len(athletes) * _TEST_SPLIT_FRACTION)
+        if k == 0:
+            raise ValueError(
+                f"Dataset has {len(athletes)} athletes; "
+                f"floor({len(athletes)} × {_TEST_SPLIT_FRACTION}) = 0 test athletes."
+            )
+        test_set = set(rng.choice(athletes, k, replace=False).tolist())
+    else:
+        # ── Per-dataset split ─────────────────────────────────────────────────
+        test_set: set[str] = set()
+        for ds_name, k in n_test.items():
+            ds_athletes = sorted({r.athlete for r in records if r.dataset == ds_name})
+            if k > len(ds_athletes):
+                raise ValueError(
+                    f"Dataset '{ds_name}' has {len(ds_athletes)} athlete(s) but "
+                    f"n_test['{ds_name}']={k} was requested."
+                )
+            if k > 0:
+                test_set.update(rng.choice(ds_athletes, k, replace=False).tolist())
+
     train = [r for r in records if r.athlete not in test_set]
     test  = [r for r in records if r.athlete in test_set]
-    return train, test, test_athletes
+    return train, test, sorted(test_set)
 
 
 def loao_splits(records: list[VideoRecord]) -> Iterator[tuple[list[VideoRecord], list[VideoRecord], str]]:

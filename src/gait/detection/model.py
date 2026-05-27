@@ -134,12 +134,12 @@ class TCN(nn.Module):
         Returns
         -------
         torch.Tensor
-            Log-probabilities, shape (B, T, n_classes).
+            Logits, shape (B, T, n_classes).
         """
         x = x.permute(0, 2, 1)               # (B, n_features, T)
         x = self.blocks(x)                    # (B, n_filters, T)
         logits = self.classifier(x)           # (B, n_classes, T)
-        return torch.log_softmax(logits, dim=1).permute(0, 2, 1)  # (B, T, n_classes)
+        return logits.permute(0, 2, 1)        # (B, T, n_classes)
 
     @property
     def receptive_field(self) -> int:
