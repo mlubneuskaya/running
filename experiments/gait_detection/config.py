@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 @dataclass
 class ExperimentConfig:
     # Data
-    annotations_csv: str = "data/output/annotations/optojump/ml_training_dataset.csv"
+    annotations_csv: str = "data/output/annotations/optojump/visibility_annotations.csv"
     fps: float = 120.0
     n_classes: int = 3
     class_names: list[str] = field(default_factory=lambda: ["left_stance", "right_stance", "flight"])

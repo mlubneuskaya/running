@@ -26,7 +26,24 @@ def aggregate_experiment_results(
     path_to_fps_dict,
     detector,
     links_dict,
+    frame_ranges: "dict[str, tuple[int, int]] | None" = None,
 ):
+    """Aggregate jitter, link-stability and detection-gap metrics across videos.
+
+    Parameters
+    ----------
+    path_to_fps_dict : dict[str, float]
+        Mapping from pose-JSON path to video FPS.
+    detector : str
+        Detector name written into the result DataFrames.
+    links_dict : dict[str, tuple[str, str]]
+        Skeleton link definitions (name → (kp_a, kp_b)).
+    frame_ranges : dict[str, tuple[int, int]] | None
+        Optional mapping from pose-JSON path to ``(first_visible, last_visible)``
+        (inclusive, 0-based video frame indices).  When provided, only frames in
+        ``[first_visible, last_visible]`` are included in the analysis.
+        Pass ``None`` to use all frames (legacy behaviour).
+    """
     global_links = []
     global_jitter = []
     global_gaps = []
@@ -38,7 +55,14 @@ def aggregate_experiment_results(
             raw_json = json.load(f)
 
         keypoints_list = list(set([x for xs in raw_json["connections"] for x in xs]))
-        records = [row if row is not None else {} for row in raw_json["pose_data"]]
+        pose_data = raw_json["pose_data"]
+
+        # ── optionally restrict to the annotated visibility window ──────────
+        if frame_ranges is not None and path in frame_ranges:
+            first_f, last_f = frame_ranges[path]
+            pose_data = pose_data[first_f : last_f + 1]
+
+        records = [row if row is not None else {} for row in pose_data]
         df_raw = pd.DataFrame(records)[keypoints_list]
         df_coords = expand_lists_to_cols(df_raw)
 

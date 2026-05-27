@@ -35,7 +35,7 @@ from src.gait.detection.features import extract_features
 from src.gait.gait_data.smoothing import smooth_pose_data
 
 LABEL_MAP = {"left_stance": 0, "right_stance": 1, "flight": 2}
-ANNOTATION_PADDING = 3  # pose frames to keep before first and after last annotation
+ANNOTATION_PADDING = 0  # annotations now cover the full visibility window; no extra padding needed
 # contact + side → stance label
 CONTACT_SIDE_MAP = {"left": 0, "right": 1}
 
@@ -204,6 +204,7 @@ def load_dataset_with_pose(
         first_frame = int(smooth["frame_index"].iloc[0])
         labels = _annotation_to_labels(group, first_frame, T)
 
+        # Clip to the annotated visibility window exactly
         first_ann = int(group["frame_number"].min())
         last_ann  = int(group["frame_number"].max())
         start_idx = max(0, first_ann - ANNOTATION_PADDING - first_frame)
@@ -245,7 +246,7 @@ def load_dataset(annotations_csv: str, fps: float = float(RECORDING_FPS)) -> lis
         first_frame = int(smooth["frame_index"].iloc[0])
         labels = _annotation_to_labels(group, first_frame, T)
 
-        # Clip to annotation window ± ANNOTATION_PADDING frames
+        # Clip to the annotated visibility window exactly
         first_ann = int(group["frame_number"].min())
         last_ann  = int(group["frame_number"].max())
         start_idx = max(0, first_ann - ANNOTATION_PADDING - first_frame)
