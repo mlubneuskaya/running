@@ -58,6 +58,8 @@ def main(
     output_dir: str,
     features_dir: str,
     video_input_dir: str,
+    n_test: dict,
+    seed: int,
 ) -> None:
     os.makedirs(output_dir, exist_ok=True)
     probs_dir = os.path.join(output_dir, "probs")
@@ -67,7 +69,7 @@ def main(
     all_records = load_image_dataset(cfg.annotations_csv, features_dir, video_input_dir)
     logger.info("%d records loaded.", len(all_records))
 
-    train_records, test_records, test_athletes = train_test_split(all_records)
+    train_records, test_records, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     n_features = all_records[0].features.shape[1]
     logger.info(
         "Split: %d train  %d test  n_features=%d",
@@ -170,5 +172,10 @@ if __name__ == "__main__":
     if not study_cfg:
         raise ValueError("'study' section is missing.")
 
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    main(cfg, study_cfg, int(trial_id), output_dir, features_dir, video_input_dir)
+    main(cfg, study_cfg, int(trial_id), output_dir, features_dir, video_input_dir,
+         n_test=n_test, seed=seed)

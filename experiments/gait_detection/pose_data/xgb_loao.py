@@ -55,7 +55,7 @@ def _flatten(records, feature_idx=None):
     return np.vstack(X).astype(np.float32), np.concatenate(y).astype(np.int64)
 
 
-def main(cfg: ExperimentConfig, best_params: dict, output_dir: str) -> None:
+def main(cfg: ExperimentConfig, best_params: dict, output_dir: str, n_test: dict, seed: int) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_pose_xgb_loao")
 
@@ -66,7 +66,7 @@ def main(cfg: ExperimentConfig, best_params: dict, output_dir: str) -> None:
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     logger.info("%d records loaded.", len(all_records))
 
-    records, _, test_athletes = train_test_split(all_records)
+    records, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     logger.info("Test athletes excluded: %s  (%d train records)", test_athletes, len(records))
 
     n_athletes = len({r.athlete for r in records})
@@ -200,5 +200,9 @@ if __name__ == "__main__":
     if cfg.feature_idx is None and "feature_idx" in _bp and _bp["feature_idx"] is not None:
         cfg.feature_idx = _bp["feature_idx"]
 
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
     logger.info("Loaded best params from %s: %s", best_params_json, best_params)
-    main(cfg, best_params, output_dir)
+    main(cfg, best_params, output_dir, n_test=n_test, seed=seed)

@@ -100,7 +100,7 @@ def objective(
     return result["best_val_loss"]
 
 
-def main(cfg: ExperimentConfig, storage, n_trials: int, search_space: dict, features_dir: str, video_input_dir: str, top_n: int = 3) -> None:
+def main(cfg: ExperimentConfig, storage, n_trials: int, search_space: dict, features_dir: str, video_input_dir: str, top_n: int = 3, *, n_test: dict, seed: int) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_image_tcn_tuning")
 
@@ -108,7 +108,7 @@ def main(cfg: ExperimentConfig, storage, n_trials: int, search_space: dict, feat
     all_records = load_image_dataset(cfg.annotations_csv, features_dir, video_input_dir)
     logger.info("%d records loaded.", len(all_records))
 
-    records, _, test_athletes = train_test_split(all_records)
+    records, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     logger.info("Test athletes excluded: %s", test_athletes)
     train_records, val_records = tuning_split(records, cfg.n_val_athletes_tuning, cfg.random_seed)
     logger.info("Train: %d  Val: %d", len(train_records), len(val_records))
@@ -183,4 +183,8 @@ if __name__ == "__main__":
         storage = storage_path
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    main(cfg, storage, n_trials, search_space, features_dir, video_input_dir, top_n)
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
+    main(cfg, storage, n_trials, search_space, features_dir, video_input_dir, top_n, n_test=n_test, seed=seed)

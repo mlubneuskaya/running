@@ -154,6 +154,8 @@ def main(
     video_input_dir: str,
     img_size: int,
     bbox_padding: float,
+    n_test: dict,
+    seed: int,
 ) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_image_resnet_tuning")
@@ -165,7 +167,7 @@ def main(
     all_records = [r for r, _, _ in all_records_info]
     logger.info("%d records loaded.", len(all_records))
 
-    records, _, test_athletes = train_test_split(all_records)
+    records, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     test_set = set(test_athletes)
     train_info = [t for t in all_records_info if t[0].athlete not in test_set]
     logger.info("Test athletes excluded: %s", test_athletes)
@@ -266,4 +268,9 @@ if __name__ == "__main__":
         raise ValueError("'search_space' section is missing or empty in the config.")
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    main(cfg, n_trials, search_space, backbone_name, pose_dir, video_input_dir, img_size, bbox_padding)
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
+    main(cfg, n_trials, search_space, backbone_name, pose_dir, video_input_dir, img_size, bbox_padding,
+         n_test=n_test, seed=seed)

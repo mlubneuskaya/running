@@ -423,14 +423,10 @@ class GaitSequenceDataset(Dataset):
 
 # ── splits ───────────────────────────────────────────────────────────────────
 
-_TEST_SPLIT_SEED     = 42
-_TEST_SPLIT_FRACTION = 0.10
-
-
 def train_test_split(
     records: list[VideoRecord],
-    n_test: dict[str, int] | None = None,
-    seed: int = _TEST_SPLIT_SEED,
+    n_test: dict[str, int],
+    seed: int = 42,
 ) -> tuple[list[VideoRecord], list[VideoRecord], list[str]]:
     """Randomly split records into train and test sets at the athlete level.
 
@@ -441,47 +437,40 @@ def train_test_split(
     ----------
     records : list[VideoRecord]
         All records to split.
-    n_test : dict[str, int] | None
+    n_test : dict[str, int]
         How many athletes from each dataset go to the test split.
         Keys must match the ``record.dataset`` values of the records you pass.
         Example: ``{"optojump": 3, "tempos": 2}`` — draws 3 athletes from the
         optojump subset and 2 from the tempos subset independently.
-
-        When ``None`` (default / legacy mode) all records are pooled together
-        and ``floor(n_athletes × 0.10)`` athletes are sampled as a test set.
-        This path is kept for backward compatibility with single-dataset runs.
+        Set a value to 0 to keep all athletes of a dataset in training.
+        Load this from ``configs/split.yaml`` via the ``split_config`` key in
+        your experiment config.
     seed : int
-        Random seed for reproducibility. Default ``42``.
+        Random seed for reproducibility.  Load from ``configs/split.yaml``.
 
     Returns
     -------
     (train_records, test_records, test_athletes)
         ``test_athletes`` is a sorted list of ``record.athlete`` strings.
     """
+    if not isinstance(n_test, dict) or len(n_test) == 0:
+        raise ValueError(
+            "'n_test' must be a dict with at least one dataset entry, "
+            "e.g. {\"optojump\": 2, \"tempos\": 0}.\n"
+            "Use 0 to keep all athletes of a dataset in training.\n"
+            "Add 'split_config: \"configs/split.yaml\"' to your experiment config."
+        )
     rng = np.random.default_rng(seed)
-
-    if n_test is None:
-        # ── Legacy single-pool behaviour ─────────────────────────────────────
-        athletes = sorted({r.athlete for r in records})
-        k = int(len(athletes) * _TEST_SPLIT_FRACTION)
-        if k == 0:
+    test_set: set[str] = set()
+    for ds_name, k in n_test.items():
+        ds_athletes = sorted({r.athlete for r in records if r.dataset == ds_name})
+        if k > len(ds_athletes):
             raise ValueError(
-                f"Dataset has {len(athletes)} athletes; "
-                f"floor({len(athletes)} × {_TEST_SPLIT_FRACTION}) = 0 test athletes."
+                f"Dataset '{ds_name}' has {len(ds_athletes)} athlete(s) but "
+                f"n_test['{ds_name}']={k} was requested."
             )
-        test_set = set(rng.choice(athletes, k, replace=False).tolist())
-    else:
-        # ── Per-dataset split ─────────────────────────────────────────────────
-        test_set: set[str] = set()
-        for ds_name, k in n_test.items():
-            ds_athletes = sorted({r.athlete for r in records if r.dataset == ds_name})
-            if k > len(ds_athletes):
-                raise ValueError(
-                    f"Dataset '{ds_name}' has {len(ds_athletes)} athlete(s) but "
-                    f"n_test['{ds_name}']={k} was requested."
-                )
-            if k > 0:
-                test_set.update(rng.choice(ds_athletes, k, replace=False).tolist())
+        if k > 0:
+            test_set.update(rng.choice(ds_athletes, k, replace=False).tolist())
 
     train = [r for r in records if r.athlete not in test_set]
     test  = [r for r in records if r.athlete in test_set]

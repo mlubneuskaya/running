@@ -216,14 +216,14 @@ def run_loao(
 
 # ── entry point ───────────────────────────────────────────────────────────────
 
-def main(cfg: ExperimentConfig, study_cfg: dict, trial_id: int) -> None:
+def main(cfg: ExperimentConfig, study_cfg: dict, trial_id: int, n_test: dict, seed: int) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_pose_tcn_loao")
     logger.info("Loading dataset …")
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     logger.info("%d videos loaded.", len(all_records))
 
-    records, test_records, test_athletes = train_test_split(all_records)
+    records, test_records, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     logger.info(
         "Test set excluded from LOAO: %s (%d videos). Training on %d videos.",
         test_athletes, len(test_records), len(records),
@@ -293,4 +293,8 @@ if __name__ == "__main__":
         raise ValueError("'study' section is missing in the config.")
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    main(cfg, study_cfg, trial_id)
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
+    main(cfg, study_cfg, trial_id, n_test=n_test, seed=seed)

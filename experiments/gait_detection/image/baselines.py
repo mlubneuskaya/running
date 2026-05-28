@@ -79,7 +79,7 @@ def _objective(
     return f1["macro"]
 
 
-def main(cfg: ExperimentConfig, features_dir: str, video_input_dir: str, n_trials: int) -> None:
+def main(cfg: ExperimentConfig, features_dir: str, video_input_dir: str, n_trials: int, n_test: dict, seed: int) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_image_baselines")
 
@@ -87,7 +87,7 @@ def main(cfg: ExperimentConfig, features_dir: str, video_input_dir: str, n_trial
     all_records = load_image_dataset(cfg.annotations_csv, features_dir, video_input_dir)
     logger.info("%d records loaded.", len(all_records))
 
-    records, _, test_athletes = train_test_split(all_records)
+    records, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     logger.info("Test athletes excluded: %s", test_athletes)
     train_records, val_records = tuning_split(records, cfg.n_val_athletes_tuning, cfg.random_seed)
     logger.info("Train: %d records  Val: %d records", len(train_records), len(val_records))
@@ -179,4 +179,8 @@ if __name__ == "__main__":
     video_input_dir = raw.get("video_input_dir", "data/input/optojump")
     n_trials        = raw.get("optuna", {}).get("n_trials", 50)
 
-    main(cfg, features_dir, video_input_dir, n_trials)
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
+    main(cfg, features_dir, video_input_dir, n_trials, n_test=n_test, seed=seed)

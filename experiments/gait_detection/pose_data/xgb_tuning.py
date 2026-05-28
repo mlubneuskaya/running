@@ -78,13 +78,13 @@ def objective(
     return f1["macro"]
 
 
-def main(cfg: ExperimentConfig | None = None, n_trials: int = 50) -> None:
+def main(cfg: ExperimentConfig | None = None, n_trials: int = 50, *, n_test: dict, seed: int) -> None:
     cfg = cfg or ExperimentConfig()
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_pose_xgb_tuning")
 
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
-    records, _, _ = train_test_split(all_records)
+    records, _, _ = train_test_split(all_records, n_test=n_test, seed=seed)
     train_records, val_records = tuning_split(
         records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.random_seed
     )
@@ -163,4 +163,8 @@ if __name__ == "__main__":
     raw = load_config(args.config)
     cfg = ExperimentConfig(**raw.get("experiment", {}))
     n_trials = raw.get("optuna", {}).get("n_trials", 50)
-    main(cfg, n_trials)
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
+    main(cfg, n_trials, n_test=n_test, seed=seed)

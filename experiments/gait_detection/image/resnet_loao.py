@@ -196,6 +196,8 @@ def main(
     pose_dir: str,
     video_input_dir: str,
     output_dir: str,
+    n_test: dict,
+    seed: int,
 ) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_image_resnet_loao")
@@ -210,7 +212,7 @@ def main(
     all_records = [r for r, _, _ in all_records_info]
     logger.info("%d records loaded.", len(all_records))
 
-    _, _, test_athletes = train_test_split(all_records)
+    _, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     test_set = set(test_athletes)
     train_info = [t for t in all_records_info if t[0].athlete not in test_set]
     train_records = [t[0] for t in train_info]
@@ -362,4 +364,9 @@ if __name__ == "__main__":
     bbox_padding  = _bp.get("bbox_padding",  bbox_padding)
 
     logger.info("Loaded best params from %s: %s", best_params_json, params)
-    main(cfg, params, backbone_name, img_size, bbox_padding, pose_dir, video_input_dir, output_dir)
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
+    main(cfg, params, backbone_name, img_size, bbox_padding, pose_dir, video_input_dir, output_dir,
+         n_test=n_test, seed=seed)

@@ -166,14 +166,14 @@ def run_xgboost(train_records, val_records, feature_idx, cfg: ExperimentConfig) 
     }
 
 
-def main(cfg: ExperimentConfig | None = None) -> None:
+def main(cfg: ExperimentConfig | None = None, *, n_test: dict, seed: int) -> None:
     all_results = {}
 
     cfg = cfg or ExperimentConfig()
     mlflow.set_experiment("gait_pose_baselines")
 
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
-    records, _, _ = train_test_split(all_records)
+    records, _, _ = train_test_split(all_records, n_test=n_test, seed=seed)
 
     train_records, val_records = tuning_split(
         records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.random_seed
@@ -222,4 +222,8 @@ if __name__ == "__main__":
     )
     raw = load_config(args.config)
     cfg = ExperimentConfig(**raw.get("experiment", {}))
-    main(cfg)
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
+    main(cfg, n_test=n_test, seed=seed)

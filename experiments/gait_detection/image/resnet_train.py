@@ -44,6 +44,8 @@ def main(
     bbox_padding: float,
     pose_dir: str,
     video_input_dir: str,
+    n_test: dict,
+    seed: int,
 ) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_image_resnet_training")
@@ -54,7 +56,7 @@ def main(
     )
     all_records = [r for r, _, _ in all_records_info]
 
-    _, _, test_athletes = train_test_split(all_records)
+    _, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     test_set     = set(test_athletes)
     train_info   = [t for t in all_records_info if t[0].athlete not in test_set]
     logger.info("Test set excluded: %s  (%d train records)", test_athletes, len(train_info))
@@ -170,4 +172,9 @@ if __name__ == "__main__":
         best_params_json, best_epoch, _bp["best_val_loss"],
     )
 
-    main(cfg, best_params, best_epoch, backbone_name, img_size, bbox_padding, pose_dir, video_input_dir)
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
+    main(cfg, best_params, best_epoch, backbone_name, img_size, bbox_padding, pose_dir, video_input_dir,
+         n_test=n_test, seed=seed)

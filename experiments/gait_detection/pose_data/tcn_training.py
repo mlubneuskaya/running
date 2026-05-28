@@ -139,6 +139,9 @@ def main(
     trial_ids: list[int],
     loao_dir: str,
     log_every: int = 10,
+    *,
+    n_test: dict,
+    seed: int,
 ) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_pose_tcn_training")
@@ -146,7 +149,7 @@ def main(
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     logger.info("%d videos loaded.", len(all_records))
 
-    records, test_records, test_athletes = train_test_split(all_records)
+    records, test_records, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     logger.info(
         "Test set excluded from training: %s (%d videos). Training on %d videos.",
         test_athletes, len(test_records), len(records),
@@ -214,5 +217,9 @@ if __name__ == "__main__":
     if not loao_dir:
         raise ValueError("'loao_dir' is missing in the config.")
 
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    main(cfg, study_cfg, trial_ids, loao_dir, log_every)
+    main(cfg, study_cfg, trial_ids, loao_dir, log_every, n_test=n_test, seed=seed)

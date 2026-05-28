@@ -59,6 +59,8 @@ def main(
     features_dir: str,
     video_input_dir: str,
     output_dir: str,
+    n_test: dict,
+    seed: int,
 ) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_image_xgb_loao")
@@ -70,7 +72,7 @@ def main(
     all_records = load_image_dataset(cfg.annotations_csv, features_dir, video_input_dir)
     logger.info("%d records loaded.", len(all_records))
 
-    records, _, test_athletes = train_test_split(all_records)
+    records, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     logger.info("Test athletes excluded: %s  (%d train records)", test_athletes, len(records))
 
     n_athletes = len({r.athlete for r in records})
@@ -200,5 +202,9 @@ if __name__ == "__main__":
         _bp = json.load(_f)
     best_params = _bp["best_params"]
 
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
     logger.info("Loaded best params from %s: %s", best_params_json, best_params)
-    main(cfg, best_params, features_dir, video_input_dir, output_dir)
+    main(cfg, best_params, features_dir, video_input_dir, output_dir, n_test=n_test, seed=seed)

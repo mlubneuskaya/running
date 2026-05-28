@@ -108,12 +108,12 @@ def objective(trial, train_records, val_records, cfg: ExperimentConfig, search_s
     return result["best_val_loss"]
 
 
-def main(cfg: ExperimentConfig, storage: str | None, n_trials: int, search_space: dict) -> None:
+def main(cfg: ExperimentConfig, storage: str | None, n_trials: int, search_space: dict, n_test: dict, seed: int) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_pose_tcn_tuning")
 
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
-    records, _, test_athletes = train_test_split(all_records)
+    records, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     logger.info("Test athletes excluded from tuning: %s", test_athletes)
     train_records, val_records = tuning_split(
         records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.random_seed
@@ -177,4 +177,8 @@ if __name__ == "__main__":
     else:
         storage = storage_path  # SQLite URL passed as string
 
-    main(cfg, storage, n_trials, search_space)
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
+    main(cfg, storage, n_trials, search_space, n_test=n_test, seed=seed)

@@ -71,6 +71,8 @@ def main(
     output_dir: str,
     pose_dir: str,
     video_input_dir: str,
+    n_test: dict,
+    seed: int,
 ) -> None:
     os.makedirs(output_dir, exist_ok=True)
     probs_dir = os.path.join(output_dir, "probs")
@@ -83,7 +85,7 @@ def main(
     all_records = [r for r, _, _ in all_records_info]
     logger.info("%d records loaded.", len(all_records))
 
-    _, _, test_athletes = train_test_split(all_records)
+    _, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     test_set = set(test_athletes)
 
     device = get_device()
@@ -171,4 +173,9 @@ if __name__ == "__main__":
     else:
         raise ValueError("Either 'training_json' or 'best_params_json' must be set.")
 
-    main(cfg, params, backbone_name, img_size, bbox_padding, output_dir, pose_dir, video_input_dir)
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
+    main(cfg, params, backbone_name, img_size, bbox_padding, output_dir, pose_dir, video_input_dir,
+         n_test=n_test, seed=seed)

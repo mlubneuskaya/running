@@ -72,6 +72,8 @@ def main(
     study_cfg: dict,
     trial_id: int,
     output_dir: str,
+    n_test: dict,
+    seed: int,
 ) -> None:
     os.makedirs(output_dir, exist_ok=True)
 
@@ -79,7 +81,7 @@ def main(
     all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
     logger.info("%d records loaded.", len(all_records))
 
-    train_records, test_records, test_athletes = train_test_split(all_records)
+    train_records, test_records, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     logger.info(
         "Split: %d train records, %d test records (%s).",
         len(train_records), len(test_records), test_athletes,
@@ -195,5 +197,9 @@ if __name__ == "__main__":
     if not study_cfg:
         raise ValueError("'study' section is missing in the config.")
 
+    split_cfg = load_config(raw["split_config"])
+    n_test    = split_cfg["n_test"]
+    seed      = split_cfg.get("seed", 42)
+
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    main(cfg, study_cfg, int(trial_id), output_dir)
+    main(cfg, study_cfg, int(trial_id), output_dir, n_test=n_test, seed=seed)

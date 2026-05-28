@@ -15,16 +15,6 @@ class ExperimentConfig:
     # Optional second dataset (tempos).  Empty string = not used.
     tempos_annotations_csv: str = ""
 
-    # ── Train / test split ────────────────────────────────────────────────────
-    # Number of athletes held out as the test set, specified per dataset.
-    # Keys must match the dataset names used when loading (e.g. "optojump",
-    # "tempos").  Set a key to 0 to include all athletes of that dataset in
-    # training.  When this dict is empty the legacy 10%-of-pool fallback is
-    # used automatically.
-    #
-    # Defaults mirror the old 10% rule: 22 optojump athletes × 10% ≈ 2.
-    n_test_athletes: dict = field(default_factory=lambda: {"optojump": 2})
-
     fps: float = 120.0
     n_classes: int = 3
     class_names: list[str] = field(default_factory=lambda: ["left_stance", "right_stance", "flight"])
