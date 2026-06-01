@@ -1,0 +1,6 @@
+outs:
+- md5: d73f6b4a8b07cc75187dc38edb645805.dir
+  size: 186012619
+  nfiles: 179
+  hash: md5
+  path: mediapipe_detector
