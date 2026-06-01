@@ -29,7 +29,7 @@ import xgboost as xgb
 
 import mlflow
 
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config
 from src.gait.detection.metrics import per_class_f1
 from src.gait.detection.train import seed_everything
 from src.gait.gait_data.dataset import train_test_split, tuning_split
@@ -179,7 +179,7 @@ if __name__ == "__main__":
     video_input_dir = raw.get("video_input_dir", "data/input/optojump")
     n_trials        = raw.get("optuna", {}).get("n_trials", 50)
 
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

@@ -8,6 +8,9 @@ CONFIG_OVERLAY_YOLO      := ./configs/config_overlay_yolo.yaml
 CONFIG_OVERLAY_MEDIAPIPE := ./configs/config_overlay_mediapipe.yaml
 
 # ── gait detection experiment configs ────────────────────────────────────────
+CONFIG_TRIM      := ./configs/trim_videos.yaml
+CONFIG_POSE_BATCH := ./configs/pose_batch.yaml
+
 CONFIG_STAGE1   := ./configs/experiments/baselines.yaml
 CONFIG_STAGE2   := ./configs/experiments/tcn_tuning.yaml
 CONFIG_STAGE3   := ./configs/experiments/xgb_tuning.yaml
@@ -19,7 +22,7 @@ YOLO_OUTPUT_DIR := ./data/output/yolo/overlays
 MEDIAPIPE_OUTPUT_DIR := ./data/output/mediapipe/overlays
 
 .PHONY: help setup process-yolo process-mp overlay visualize all clean \
-        stage1 stage2 stage4 xgb-tune train infer gait-all
+        stage1 stage2 stage4 xgb-tune train infer gait-all trim-videos pose-batch smoke
 
 help:
 	@echo "Available commands:"
@@ -33,6 +36,7 @@ help:
 	@echo "    make all            - Run YOLO processing, Overlay, and Visualization sequentially"
 	@echo ""
 	@echo "  Gait detection experiments:"
+	@echo "    make smoke          - Fast end-to-end smoke test (2 videos, ~60s)"
 	@echo "    make stage1         - Kinematic baseline + XGBoost ablation"
 	@echo "    make stage2         - TCN hyperparameter search (Optuna)"
 	@echo "    make stage4         - Full LOAO cross-validation"
@@ -71,6 +75,10 @@ mediapipe: process-mediapipe overlay-mediapipe
 
 # ── gait detection experiments ────────────────────────────────────────────────
 
+smoke:
+	@echo "Running smoke test (2-video subset, ~60s)..."
+	$(PYTHON) scripts/smoke_test.py
+
 stage1:
 	@echo "Running Stage 1 — kinematic baseline + XGBoost ablation..."
 	$(PYTHON) -m experiments.gait_detection.baselines --config $(CONFIG_STAGE1)
@@ -97,6 +105,14 @@ infer:
 
 gait-all: stage1 stage2 stage3 stage4 stage5
 	@echo "All gait detection experiments complete."
+
+trim-videos:
+	@echo "Trimming videos to annotated region + padding..."
+	$(PYTHON) scripts/trim_videos.py --config $(CONFIG_TRIM)
+
+pose-batch:
+	@echo "Running batch pose detection..."
+	$(PYTHON) scripts/run_pose_batch.py --config $(CONFIG_POSE_BATCH)
 
 # ── housekeeping ──────────────────────────────────────────────────────────────
 

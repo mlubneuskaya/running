@@ -31,7 +31,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 import src.gait.detection.dilations as dilation_schedules
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config
 from experiments.gait_detection.study_utils import load_study, params_from_trial
 from src.gait.detection.metrics import (
     aggregate_confusion_matrices,
@@ -220,7 +220,7 @@ def main(cfg: ExperimentConfig, study_cfg: dict, trial_id: int, n_test: dict, se
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_pose_tcn_loao")
     logger.info("Loading dataset …")
-    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps, n_trim_padding=cfg.n_trim_padding, dataset=cfg.dataset)
     logger.info("%d videos loaded.", len(all_records))
 
     records, test_records, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
@@ -293,7 +293,7 @@ if __name__ == "__main__":
         raise ValueError("'study' section is missing in the config.")
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

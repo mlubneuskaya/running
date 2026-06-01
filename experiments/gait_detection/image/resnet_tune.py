@@ -29,7 +29,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config
 from src.gait.detection.train import get_device, seed_everything
 from src.gait.gait_data.dataset import train_test_split, tuning_split
 from src.gait.image.dataset import load_image_records_for_finetune
@@ -268,7 +268,7 @@ if __name__ == "__main__":
         raise ValueError("'search_space' section is missing or empty in the config.")
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

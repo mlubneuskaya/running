@@ -30,7 +30,7 @@ from torch.utils.data import DataLoader
 
 logger = logging.getLogger(__name__)
 
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config
 import src.gait.detection.dilations as dilation_schedules
 from src.gait.detection.model import TCN
 from src.gait.detection.train import TrainerConfig, Trainer, seed_everything
@@ -112,7 +112,7 @@ def main(cfg: ExperimentConfig, storage: str | None, n_trials: int, search_space
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_pose_tcn_tuning")
 
-    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps, n_trim_padding=cfg.n_trim_padding, dataset=cfg.dataset)
     records, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
     logger.info("Test athletes excluded from tuning: %s", test_athletes)
     train_records, val_records = tuning_split(
@@ -177,7 +177,7 @@ if __name__ == "__main__":
     else:
         storage = storage_path  # SQLite URL passed as string
 
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

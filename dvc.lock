@@ -102,8 +102,8 @@ stages:
       nfiles: 4
     - path: data/input/optojump/
       hash: md5
-      md5: 718bd01c12d69a3c08eb56bf4abbc8b3.dir
-      size: 990259148
+      md5: 4c27de2a1a15254063d4d5553b0d6eba.dir
+      size: 255701835
       nfiles: 184
     - path: data/input/video/high_fps/
       hash: md5
@@ -138,17 +138,17 @@ stages:
     outs:
     - path: data/output/pose/tuned_yolo/
       hash: md5
-      md5: bdb39163c55b25f1e99c1e56cddc367a.dir
-      size: 866625330
-      nfiles: 773
+      md5: 055f82d445990f0051a7f289587cbefc.dir
+      size: 717643281
+      nfiles: 876
   pose_extract_mediapipe:
     cmd: python scripts/run_pose_detection.py --config 
       configs/config_mediapipe.yaml
     deps:
     - path: configs/config_mediapipe.yaml
       hash: md5
-      md5: 77caac65e5ef1ed024c1db72fa3aafc0
-      size: 453
+      md5: 9ab0daeb54f653a080fa90d94a8d9eed
+      size: 437
     - path: data/input/video/high_fps/
       hash: md5
       md5: 65156b094114c3d7341a2971736ad8a3.dir
@@ -181,32 +181,32 @@ stages:
     outs:
     - path: data/output/pose/mediapipe/yolo_detector/
       hash: md5
-      md5: ef6a4f9d001c4c3bab88a7a12c531a09.dir
-      size: 524534563
-      nfiles: 195
+      md5: b88f87414d60cedec604655f9fd11ae3.dir
+      size: 336907308
+      nfiles: 16
   nb_yolo_comparison:
     cmd: "papermill notebooks/ray_tune_model_comparison.ipynb data/output/pose/notebooks/ray_tune_model_comparison.ipynb
       -k python3\n"
     deps:
     - path: data/output/pose/mediapipe/yolo_detector/
       hash: md5
-      md5: ef6a4f9d001c4c3bab88a7a12c531a09.dir
-      size: 524534563
-      nfiles: 195
+      md5: b88f87414d60cedec604655f9fd11ae3.dir
+      size: 336907308
+      nfiles: 16
     - path: data/output/pose/tuned_yolo/
       hash: md5
-      md5: bdb39163c55b25f1e99c1e56cddc367a.dir
-      size: 866625330
-      nfiles: 773
+      md5: 055f82d445990f0051a7f289587cbefc.dir
+      size: 717643281
+      nfiles: 876
     - path: notebooks/ray_tune_model_comparison.ipynb
       hash: md5
-      md5: 25c9e4511dfa69606e626b992efec408
-      size: 18562
+      md5: ac244859fc9b66d7ffa6a5705eff22e1
+      size: 21743
     outs:
     - path: data/output/pose/notebooks/ray_tune_model_comparison.ipynb
       hash: md5
-      md5: 28555a00e4161054ff8fb752ba88dbe7
-      size: 1832404
+      md5: 49aad4b3acfa2ae7a678ae0e5f8a5a99
+      size: 1699107
   pose_extract:
     cmd: python scripts/run_pose_detection.py --config configs/config_yolo.yaml
     deps:
@@ -256,19 +256,19 @@ stages:
     cmd: python -m experiments.gait_detection.pose_data.baselines --config 
       configs/experiments/pose_data/baselines.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/pose/tuned_yolo/
       hash: md5
-      md5: bdb39163c55b25f1e99c1e56cddc367a.dir
-      size: 866625330
-      nfiles: 773
+      md5: 055f82d445990f0051a7f289587cbefc.dir
+      size: 717643281
+      nfiles: 876
     - path: experiments/gait_detection/pose_data/baselines.py
       hash: md5
-      md5: 08b6284f197f8c2aadca852875919128
-      size: 7302
+      md5: a1c5475551abde3c6a57ea5fe4fb4873
+      size: 7588
     - path: src/gait/detection/detectors.py
       hash: md5
       md5: ccefe2471955fbf742a94c8f4a22f46c
@@ -279,47 +279,46 @@ stages:
       size: 5057
     - path: src/gait/gait_data/dataset.py
       hash: md5
-      md5: a56da81e9dadb639942ba93d524bcd5b
-      size: 14941
+      md5: 5cfecbc8056ce9838229e0846c706fd5
+      size: 21277
     params:
       configs/experiments/pose_data/baselines.yaml:
-        experiment.fps: 120.0
         experiment.n_val_athletes_tuning: 4
         experiment.random_seed: 42
     outs:
     - path: data/output/gait/pose_data/stage1/results.json
       hash: md5
-      md5: bef04e461c66581d1cd86d4c355779e8
-      size: 5184
+      md5: f90991f5e67f08ee4f06e6aedf216947
+      size: 4978
   stage2_tcn_tune:
     cmd: python -m experiments.gait_detection.pose_data.tcn_tuning --config 
       configs/experiments/pose_data/tcn_tuning.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/pose/tuned_yolo/
       hash: md5
-      md5: bdb39163c55b25f1e99c1e56cddc367a.dir
-      size: 866625330
-      nfiles: 773
+      md5: 055f82d445990f0051a7f289587cbefc.dir
+      size: 717643281
+      nfiles: 876
     - path: experiments/gait_detection/pose_data/tcn_tuning.py
       hash: md5
-      md5: ec91635a877844a4a1a431063b549405
-      size: 6619
+      md5: fce193f53783f79a35f89b6bdadb5cfc
+      size: 6902
     - path: src/gait/detection/model.py
       hash: md5
-      md5: 719e853ff0b82bb5ce7b2e096eeb1c18
-      size: 5399
+      md5: ec83d01867b1b5eec606128b28de2801
+      size: 5368
     - path: src/gait/detection/train.py
       hash: md5
-      md5: f90f9745243bbaf66f1f4f5fc017aa8a
-      size: 6769
+      md5: 0ea4c3251c0f134b891e36046d948e4b
+      size: 6773
     - path: src/gait/gait_data/dataset.py
       hash: md5
-      md5: a56da81e9dadb639942ba93d524bcd5b
-      size: 14941
+      md5: 5cfecbc8056ce9838229e0846c706fd5
+      size: 21277
     params:
       configs/experiments/pose_data/tcn_tuning.yaml:
         experiment.feature_idx:
@@ -383,37 +382,37 @@ stages:
     outs:
     - path: data/output/gait/pose_data/stage2/best_params.json
       hash: md5
-      md5: c332c9b675586a6807f28b470e784400
-      size: 257
+      md5: 41d72c7ffcf4264bcc392030bd8e7962
+      size: 259
     - path: data/output/gait/pose_data/stage2/study.log
       hash: md5
-      md5: 501b9672a1f4d9d01347184402272001
-      size: 759507
+      md5: 4e93eec3256231acae3f5998106e1edb
+      size: 640678
   stage3_xgb_tune:
     cmd: python -m experiments.gait_detection.pose_data.xgb_tuning --config 
       configs/experiments/pose_data/xgb_tuning.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/pose/tuned_yolo/
       hash: md5
-      md5: bdb39163c55b25f1e99c1e56cddc367a.dir
-      size: 866625330
-      nfiles: 773
+      md5: 055f82d445990f0051a7f289587cbefc.dir
+      size: 717643281
+      nfiles: 876
     - path: experiments/gait_detection/pose_data/xgb_tuning.py
       hash: md5
-      md5: cd2bf158f9fdb1044bc35dc8077b29c6
-      size: 5668
+      md5: ad0a75cf4a73d9800d665bfb5b94948d
+      size: 5954
     - path: src/gait/detection/features.py
       hash: md5
       md5: f95e4fda436a249f9d3dc169afefcf55
       size: 5057
     - path: src/gait/gait_data/dataset.py
       hash: md5
-      md5: a56da81e9dadb639942ba93d524bcd5b
-      size: 14941
+      md5: 5cfecbc8056ce9838229e0846c706fd5
+      size: 21277
     params:
       configs/experiments/pose_data/xgb_tuning.yaml:
         experiment.feature_idx:
@@ -441,45 +440,45 @@ stages:
     outs:
     - path: data/output/gait/pose_data/stage3/best_params.json
       hash: md5
-      md5: f76b77dcd9edb2691d1ee7b7e31118e9
-      size: 489
+      md5: b9818ef31601914ece285954c62ffee6
+      size: 490
     - path: data/output/gait/pose_data/stage3/checkpoints/model.pkl
       hash: md5
-      md5: 11deb0be8c25cb8e56f57a2d2bea9afd
-      size: 4908425
+      md5: 3efa7ce12edc8a17a20cf12ef301df39
+      size: 1169373
   stage4_loao:
     cmd: python -m experiments.gait_detection.pose_data.tcn_leave_one_out 
       --config configs/experiments/pose_data/tcn_leave_one_out.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/gait/pose_data/stage2/best_params.json
       hash: md5
-      md5: c332c9b675586a6807f28b470e784400
-      size: 257
+      md5: 41d72c7ffcf4264bcc392030bd8e7962
+      size: 259
     - path: data/output/pose/tuned_yolo/
       hash: md5
-      md5: bdb39163c55b25f1e99c1e56cddc367a.dir
-      size: 866625330
-      nfiles: 773
+      md5: 055f82d445990f0051a7f289587cbefc.dir
+      size: 717643281
+      nfiles: 876
     - path: experiments/gait_detection/pose_data/tcn_leave_one_out.py
       hash: md5
-      md5: bb2090081803cec32d56824f7080343e
-      size: 11750
+      md5: 8348b245d7fc7e3803b176314a5bf6ea
+      size: 12033
     - path: src/gait/detection/model.py
       hash: md5
-      md5: 719e853ff0b82bb5ce7b2e096eeb1c18
-      size: 5399
+      md5: ec83d01867b1b5eec606128b28de2801
+      size: 5368
     - path: src/gait/detection/train.py
       hash: md5
-      md5: f90f9745243bbaf66f1f4f5fc017aa8a
-      size: 6769
+      md5: 0ea4c3251c0f134b891e36046d948e4b
+      size: 6773
     - path: src/gait/gait_data/dataset.py
       hash: md5
-      md5: a56da81e9dadb639942ba93d524bcd5b
-      size: 14941
+      md5: 5cfecbc8056ce9838229e0846c706fd5
+      size: 21277
     params:
       configs/experiments/pose_data/tcn_leave_one_out.yaml:
         experiment.batch_size: 16
@@ -509,47 +508,47 @@ stages:
     outs:
     - path: data/output/gait/pose_data/stage4/
       hash: md5
-      md5: 2e8e8c6f4701c36c95af10edf79eb0a6.dir
-      size: 3868081
-      nfiles: 184
+      md5: cf71197209d74c045df4b0cbb2b273ce.dir
+      size: 466235
+      nfiles: 6
   stage5_train:
     cmd: python -m experiments.gait_detection.pose_data.tcn_training --config 
       configs/experiments/pose_data/tcn_training.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/gait/pose_data/stage2/best_params.json
       hash: md5
-      md5: c332c9b675586a6807f28b470e784400
-      size: 257
+      md5: 41d72c7ffcf4264bcc392030bd8e7962
+      size: 259
     - path: data/output/gait/pose_data/stage4/
       hash: md5
-      md5: 9075014a4a35fdc99e86175a0de956b6.dir
-      size: 3606242
-      nfiles: 22
+      md5: cf71197209d74c045df4b0cbb2b273ce.dir
+      size: 466235
+      nfiles: 6
     - path: data/output/pose/tuned_yolo/
       hash: md5
-      md5: bdb39163c55b25f1e99c1e56cddc367a.dir
-      size: 866625330
-      nfiles: 773
+      md5: 055f82d445990f0051a7f289587cbefc.dir
+      size: 717643281
+      nfiles: 876
     - path: experiments/gait_detection/pose_data/tcn_training.py
       hash: md5
-      md5: 5d6c9d63d93ef591c9415dc891925ba2
-      size: 7950
+      md5: 0b7f73ed06e4acbbccae2b80cefeff42
+      size: 8196
     - path: src/gait/detection/model.py
       hash: md5
-      md5: 719e853ff0b82bb5ce7b2e096eeb1c18
-      size: 5399
+      md5: ec83d01867b1b5eec606128b28de2801
+      size: 5368
     - path: src/gait/detection/train.py
       hash: md5
-      md5: f90f9745243bbaf66f1f4f5fc017aa8a
-      size: 6769
+      md5: 0ea4c3251c0f134b891e36046d948e4b
+      size: 6773
     - path: src/gait/gait_data/dataset.py
       hash: md5
-      md5: a56da81e9dadb639942ba93d524bcd5b
-      size: 14941
+      md5: 5cfecbc8056ce9838229e0846c706fd5
+      size: 21277
     params:
       configs/experiments/pose_data/tcn_training.yaml:
         experiment.batch_size: 16
@@ -578,42 +577,46 @@ stages:
     outs:
     - path: data/output/gait/pose_data/stage5/checkpoint.pt
       hash: md5
-      md5: a9c6629876216ca2b60a1bc544038e16
-      size: 175861
+      md5: 8dc791c607fe5964c8644bb0b7c4ee10
+      size: 229045
     - path: data/output/gait/pose_data/stage5/training.json
       hash: md5
-      md5: 3edabce29b6c5baaa45e3e0fb3571169
-      size: 443
+      md5: 8686cf745d8792d78b44737df4fc9310
+      size: 441
   stage6_infer:
     cmd: python -m experiments.gait_detection.pose_data.tcn_inference --config 
       configs/experiments/pose_data/tcn_inference.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
+    - path: data/output/annotations/tempos/ml_labels.csv
+      hash: md5
+      md5: aad4f3291309fdd27ea235cca3545610
+      size: 1576955
     - path: data/output/gait/pose_data/stage5/
       hash: md5
-      md5: dd5ca96b1ea3f9784d57499efe42eb35.dir
-      size: 176334
+      md5: 91b92bd3a548e9e34f3e9f1f80850a0d.dir
+      size: 229516
       nfiles: 3
     - path: data/output/pose/tuned_yolo/
       hash: md5
-      md5: bdb39163c55b25f1e99c1e56cddc367a.dir
-      size: 866625330
-      nfiles: 773
+      md5: 055f82d445990f0051a7f289587cbefc.dir
+      size: 717643281
+      nfiles: 876
     - path: experiments/gait_detection/pose_data/tcn_inference.py
       hash: md5
-      md5: 23bbad20e88bf4f7025e6126a8e71b90
-      size: 7099
+      md5: 0099c8115df45f5bcf83433fee8f83f1
+      size: 8064
     - path: src/gait/detection/model.py
       hash: md5
-      md5: 719e853ff0b82bb5ce7b2e096eeb1c18
-      size: 5399
+      md5: ec83d01867b1b5eec606128b28de2801
+      size: 5368
     - path: src/gait/gait_data/dataset.py
       hash: md5
-      md5: a56da81e9dadb639942ba93d524bcd5b
-      size: 14941
+      md5: 5cfecbc8056ce9838229e0846c706fd5
+      size: 21277
     params:
       configs/experiments/pose_data/tcn_inference.yaml:
         experiment.feature_idx:
@@ -640,21 +643,21 @@ stages:
     outs:
     - path: data/output/gait/pose_data/stage6/manifest.json
       hash: md5
-      md5: 3fad716fcff78d3062728d9fb11c2747
-      size: 50142
+      md5: 2e50386d36ad0b2ed301bfb29e446860
+      size: 1166
     - path: data/output/gait/pose_data/stage6/probs/
       hash: md5
-      md5: d52aafc1dd93798a24164068863aa553.dir
-      size: 253748
-      nfiles: 178
+      md5: bba89c7d630f9fb76e1ab9882e320dcc.dir
+      size: 1888
+      nfiles: 2
   nb_eda:
     cmd: "papermill notebooks/eda_training_dataset.ipynb data/output/gait/notebooks/eda_training_dataset.ipynb
       -k python3\n"
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: notebooks/eda_training_dataset.ipynb
       hash: md5
       md5: 31da761431d7d79f2ee60632e3c9643e
@@ -662,47 +665,47 @@ stages:
     outs:
     - path: data/output/gait/notebooks/eda_training_dataset.ipynb
       hash: md5
-      md5: dcf70d6bdbcecebaaf55624df1cb2658
-      size: 741937
+      md5: 72e2b92b6a003aacb1452bbfa2c9341e
+      size: 604088
   nb_optuna_analysis:
     cmd: "papermill notebooks/analyze_optuna_study.ipynb data/output/gait/notebooks/analyze_optuna_study.ipynb
       -k python3\n"
     deps:
     - path: data/output/gait/image/stage2/best_params.json
       hash: md5
-      md5: d1ab167d1f465a6753c0c2bd326ee586
-      size: 1745
+      md5: 56d0e382b283f71e0f3595416b7ba34a
+      size: 1732
     - path: data/output/gait/image/stage2/study.log
       hash: md5
-      md5: f803cc595fd4b3d2f7c27c3d9cc40e1a
-      size: 738041
+      md5: 16422042fe5b23efd16381b0b081d22a
+      size: 586748
     - path: data/output/gait/image/stage4/
       hash: md5
-      md5: a42d5dd58ff05aab4150b4c292cd0643.dir
-      size: 944548058
-      nfiles: 22
+      md5: 86b8f8be2a7f4333af8081bfebcb06a1.dir
+      size: 102866761
+      nfiles: 7
     - path: data/output/gait/pose_data/stage2/best_params.json
       hash: md5
-      md5: c332c9b675586a6807f28b470e784400
-      size: 257
+      md5: 41d72c7ffcf4264bcc392030bd8e7962
+      size: 259
     - path: data/output/gait/pose_data/stage2/study.log
       hash: md5
-      md5: 501b9672a1f4d9d01347184402272001
-      size: 759507
+      md5: 4e93eec3256231acae3f5998106e1edb
+      size: 640678
     - path: data/output/gait/pose_data/stage4/
       hash: md5
-      md5: 9075014a4a35fdc99e86175a0de956b6.dir
-      size: 3606242
-      nfiles: 22
+      md5: cf71197209d74c045df4b0cbb2b273ce.dir
+      size: 466235
+      nfiles: 6
     - path: notebooks/analyze_optuna_study.ipynb
       hash: md5
-      md5: f5310df1de72acbd8f158158b2997e35
-      size: 45507
+      md5: f85667060dbc2a68e3d8328ca99488b0
+      size: 44238
     outs:
     - path: data/output/gait/notebooks/analyze_optuna_study.ipynb
       hash: md5
-      md5: bd0edb4dbed1a8c903d61f95c9e10dbe
-      size: 1594530
+      md5: eff7764e254d555a0cc10dc3787e3738
+      size: 1668301
   nb_model_comparison:
     cmd: "papermill notebooks/compare_kinematic_xgboost.ipynb data/output/gait/notebooks/compare_kinematic_xgboost.ipynb
       -k python3\n"
@@ -789,24 +792,46 @@ stages:
     cmd: python -m experiments.gait_detection.image.feature_extract --config 
       configs/experiments/image/feature_extract.yaml
     deps:
+    - path: configs/dataset.yaml
+      hash: md5
+      md5: 0ab7e85a94267d7c9f6a06d207edfbae
+      size: 1686
     - path: configs/experiments/image/feature_extract.yaml
       hash: md5
-      md5: d659571e12257a5e67a71cd743456529
-      size: 438
+      md5: b29f93c9a62bf9a63021b7ef1108e987
+      size: 1289
     - path: data/input/optojump/
       hash: md5
-      md5: 718bd01c12d69a3c08eb56bf4abbc8b3.dir
-      size: 990259148
+      md5: 4c27de2a1a15254063d4d5553b0d6eba.dir
+      size: 255701835
       nfiles: 184
+    - path: data/input/tempos/
+      hash: md5
+      md5: d3ced60691977ffc115cd392d3f91150.dir
+      size: 648836272
+      nfiles: 161
+    - path: data/output/annotations/optojump/visibility_annotations.csv
+      hash: md5
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
+    - path: data/output/annotations/tempos/ml_labels.csv
+      hash: md5
+      md5: aad4f3291309fdd27ea235cca3545610
+      size: 1576955
     - path: data/output/pose/tuned_yolo/000332/optojump
       hash: md5
-      md5: 438f76e033a312b6c2fe521467273db9.dir
-      size: 129803437
-      nfiles: 180
+      md5: d149bd72a82683c17c57947507498705.dir
+      size: 128603964
+      nfiles: 179
+    - path: data/output/pose/tuned_yolo/000332/tempos
+      hash: md5
+      md5: 1a15657163130ded425b937ddf3b0ec3.dir
+      size: 213382088
+      nfiles: 160
     - path: experiments/gait_detection/image/feature_extract.py
       hash: md5
-      md5: 0228dd118cbc5efaf2e1ac6c19125d7d
-      size: 3106
+      md5: fc174a3f4bbf12c1aaad778689463dc5
+      size: 4244
     - path: src/gait/image/extractor.py
       hash: md5
       md5: 134bc114d0cfa13f928364b96a229c0a
@@ -819,38 +844,43 @@ stages:
     outs:
     - path: data/output/gait/image_features/
       hash: md5
-      md5: f98957d492933c8b91a66fdb1815ea3e.dir
-      size: 61337856
-      nfiles: 178
+      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
+      size: 585984
+      nfiles: 2
+    - path: data/output/gait/image_features_tempos/
+      hash: md5
+      md5: d751713988987e9331980363e24189ce.dir
+      size: 0
+      nfiles: 0
   img_baselines:
     cmd: python -m experiments.gait_detection.image.baselines --config 
       configs/experiments/image/baselines.yaml
     deps:
     - path: configs/experiments/image/baselines.yaml
       hash: md5
-      md5: 3012e0360cc9331f6f1ee7972e39a075
-      size: 457
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+      md5: eb9561b43e70832f5f07b079fb532c08
+      size: 425
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/gait/image_features/
       hash: md5
-      md5: f98957d492933c8b91a66fdb1815ea3e.dir
-      size: 61337856
-      nfiles: 178
+      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
+      size: 585984
+      nfiles: 2
     - path: experiments/gait_detection/image/baselines.py
       hash: md5
-      md5: 30900cb9b01aca3bfcc255b9111b8531
-      size: 6534
+      md5: 7990c2285bc9533c4af57d3b3ee821f8
+      size: 6761
     - path: src/gait/detection/metrics.py
       hash: md5
       md5: 917f2f5c4d939e15898eb419d6c68bff
       size: 5521
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: 6296e9b0617650e8104940ecf4c8a593
-      size: 5428
+      md5: d3d05411bde352aee8f11c7074fbf691
+      size: 6699
     params:
       configs/experiments/image/baselines.yaml:
         experiment.n_val_athletes_tuning: 4
@@ -858,45 +888,45 @@ stages:
     outs:
     - path: data/output/gait/image/stage1/checkpoints/xgboost_best.pkl
       hash: md5
-      md5: f33914814a32730e1b24167d1f61c092
-      size: 3739108
+      md5: 7b51a7d385053fea32148753b1615650
+      size: 554683
     - path: data/output/gait/image/stage1/results.json
       hash: md5
-      md5: b8794456ea7dd5c74f57dce30a5fa2aa
-      size: 596
+      md5: 3f0eae68c778e2ee49148edc410e4990
+      size: 551
   img_tcn_tune:
     cmd: python -m experiments.gait_detection.image.tcn_tune --config 
       configs/experiments/image/tcn_tuning.yaml
     deps:
     - path: configs/experiments/image/tcn_tuning.yaml
       hash: md5
-      md5: 484a152c8b0c9400aa062bd5decff5b5
-      size: 1289
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+      md5: 2eefa5760defd1661a30086a280fd385
+      size: 1256
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/gait/image_features/
       hash: md5
-      md5: f98957d492933c8b91a66fdb1815ea3e.dir
-      size: 61337856
-      nfiles: 178
+      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
+      size: 585984
+      nfiles: 2
     - path: experiments/gait_detection/image/tcn_tune.py
       hash: md5
-      md5: eb83bcbdb2b6ada87a2e8de8ea9733c9
-      size: 6851
+      md5: a18fd93556ac773de78145df6a801d11
+      size: 7081
     - path: src/gait/detection/model.py
       hash: md5
-      md5: 719e853ff0b82bb5ce7b2e096eeb1c18
-      size: 5399
+      md5: ec83d01867b1b5eec606128b28de2801
+      size: 5368
     - path: src/gait/detection/train.py
       hash: md5
-      md5: f90f9745243bbaf66f1f4f5fc017aa8a
-      size: 6769
+      md5: 0ea4c3251c0f134b891e36046d948e4b
+      size: 6773
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: 6296e9b0617650e8104940ecf4c8a593
-      size: 5428
+      md5: d3d05411bde352aee8f11c7074fbf691
+      size: 6699
     params:
       configs/experiments/image/tcn_tuning.yaml:
         experiment.n_val_athletes_tuning: 4
@@ -938,45 +968,45 @@ stages:
     outs:
     - path: data/output/gait/image/stage2/best_params.json
       hash: md5
-      md5: d1ab167d1f465a6753c0c2bd326ee586
-      size: 1745
+      md5: 56d0e382b283f71e0f3595416b7ba34a
+      size: 1732
     - path: data/output/gait/image/stage2/study.log
       hash: md5
-      md5: f803cc595fd4b3d2f7c27c3d9cc40e1a
-      size: 738041
+      md5: 16422042fe5b23efd16381b0b081d22a
+      size: 586748
   img_tcn_loao:
     cmd: python -m experiments.gait_detection.image.tcn_loao --config 
       configs/experiments/image/tcn_leave_one_out.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/gait/image/stage2/best_params.json
       hash: md5
-      md5: d1ab167d1f465a6753c0c2bd326ee586
-      size: 1745
+      md5: 56d0e382b283f71e0f3595416b7ba34a
+      size: 1732
     - path: data/output/gait/image_features/
       hash: md5
-      md5: f98957d492933c8b91a66fdb1815ea3e.dir
-      size: 61337856
-      nfiles: 178
+      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
+      size: 585984
+      nfiles: 2
     - path: experiments/gait_detection/image/tcn_loao.py
       hash: md5
-      md5: a8eee7d4ca2635fb7e5bd135c0639f4b
-      size: 11681
+      md5: 161811e7a083714a8b4119d77b4c4247
+      size: 11830
     - path: src/gait/detection/model.py
       hash: md5
-      md5: 719e853ff0b82bb5ce7b2e096eeb1c18
-      size: 5399
+      md5: ec83d01867b1b5eec606128b28de2801
+      size: 5368
     - path: src/gait/detection/train.py
       hash: md5
-      md5: f90f9745243bbaf66f1f4f5fc017aa8a
-      size: 6769
+      md5: 0ea4c3251c0f134b891e36046d948e4b
+      size: 6773
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: 6296e9b0617650e8104940ecf4c8a593
-      size: 5428
+      md5: d3d05411bde352aee8f11c7074fbf691
+      size: 6699
     params:
       configs/experiments/image/tcn_leave_one_out.yaml:
         experiment.batch_size: 16
@@ -985,47 +1015,47 @@ stages:
     outs:
     - path: data/output/gait/image/stage4/
       hash: md5
-      md5: c1f41beb6a169ed6ac6ad2d101cc1775.dir
-      size: 944865322
-      nfiles: 185
+      md5: 86b8f8be2a7f4333af8081bfebcb06a1.dir
+      size: 102866761
+      nfiles: 7
   img_tcn_train:
     cmd: python -m experiments.gait_detection.image.tcn_train --config 
       configs/experiments/image/tcn_training.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/gait/image/stage2/best_params.json
       hash: md5
-      md5: d1ab167d1f465a6753c0c2bd326ee586
-      size: 1745
+      md5: 56d0e382b283f71e0f3595416b7ba34a
+      size: 1732
     - path: data/output/gait/image/stage4/
       hash: md5
-      md5: a42d5dd58ff05aab4150b4c292cd0643.dir
-      size: 944548058
-      nfiles: 22
+      md5: 86b8f8be2a7f4333af8081bfebcb06a1.dir
+      size: 102866761
+      nfiles: 7
     - path: data/output/gait/image_features/
       hash: md5
-      md5: f98957d492933c8b91a66fdb1815ea3e.dir
-      size: 61337856
-      nfiles: 178
+      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
+      size: 585984
+      nfiles: 2
     - path: experiments/gait_detection/image/tcn_train.py
       hash: md5
-      md5: 9c6532a552f3ad173308b2d80fa0277a
-      size: 6937
+      md5: 4644c2921f19bff1148c5cee78d42a32
+      size: 7184
     - path: src/gait/detection/model.py
       hash: md5
-      md5: 719e853ff0b82bb5ce7b2e096eeb1c18
-      size: 5399
+      md5: ec83d01867b1b5eec606128b28de2801
+      size: 5368
     - path: src/gait/detection/train.py
       hash: md5
-      md5: f90f9745243bbaf66f1f4f5fc017aa8a
-      size: 6769
+      md5: 0ea4c3251c0f134b891e36046d948e4b
+      size: 6773
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: 6296e9b0617650e8104940ecf4c8a593
-      size: 5428
+      md5: d3d05411bde352aee8f11c7074fbf691
+      size: 6699
     params:
       configs/experiments/image/tcn_training.yaml:
         experiment.batch_size: 16
@@ -1033,73 +1063,77 @@ stages:
     outs:
     - path: data/output/gait/image/stage5/
       hash: md5
-      md5: f4194b671b81d6acec19aca119265ebe.dir
-      size: 47221017
+      md5: feca053e804b2e21faea359bc4bd529f.dir
+      size: 51425879
       nfiles: 2
   img_tcn_infer:
     cmd: python -m experiments.gait_detection.image.tcn_infer --config 
       configs/experiments/image/tcn_inference.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
+    - path: data/output/annotations/tempos/ml_labels.csv
+      hash: md5
+      md5: aad4f3291309fdd27ea235cca3545610
+      size: 1576955
     - path: data/output/gait/image/stage5/
       hash: md5
-      md5: f4194b671b81d6acec19aca119265ebe.dir
-      size: 47221017
+      md5: feca053e804b2e21faea359bc4bd529f.dir
+      size: 51425879
       nfiles: 2
     - path: data/output/gait/image_features/
       hash: md5
-      md5: f98957d492933c8b91a66fdb1815ea3e.dir
-      size: 61337856
-      nfiles: 178
+      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
+      size: 585984
+      nfiles: 2
     - path: experiments/gait_detection/image/tcn_infer.py
       hash: md5
-      md5: 732bafc2d2ea6a07772e19551cd30cad
-      size: 6239
+      md5: 187e103f9c4cba11a400e218bd5eb467
+      size: 7305
     - path: src/gait/detection/model.py
       hash: md5
-      md5: 719e853ff0b82bb5ce7b2e096eeb1c18
-      size: 5399
+      md5: ec83d01867b1b5eec606128b28de2801
+      size: 5368
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: 6296e9b0617650e8104940ecf4c8a593
-      size: 5428
+      md5: d3d05411bde352aee8f11c7074fbf691
+      size: 6699
     params:
       configs/experiments/image/tcn_inference.yaml:
         experiment.n_classes: 3
     outs:
     - path: data/output/gait/image/stage6/manifest.json
       hash: md5
-      md5: 1dfcc629a86a2f91a2e996712375b74a
-      size: 49317
+      md5: 288f5f4c43c757212f98df947d30afaf
+      size: 999
     - path: data/output/gait/image/stage6/probs/
       hash: md5
-      md5: 7d369c5f25280f026f88bba9478912f8.dir
-      size: 297980
-      nfiles: 178
+      md5: c650379b5a6fd2ddf3baf4f791be85f9.dir
+      size: 1876
+      nfiles: 2
   img_resnet_tune:
     cmd: python -m experiments.gait_detection.image.resnet_tune --config 
       configs/experiments/image/resnet_tune.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/gait/image_features/
       hash: md5
-      md5: f98957d492933c8b91a66fdb1815ea3e.dir
-      size: 61337856
-      nfiles: 178
+      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
+      size: 585984
+      nfiles: 2
     - path: experiments/gait_detection/image/resnet_tune.py
       hash: md5
-      md5: f6a86bf3196f2ce1498d10a257b4f9bc
-      size: 9095
+      md5: c6b51e4c167b5c5778a991550c9b4174
+      size: 9339
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: 6296e9b0617650e8104940ecf4c8a593
-      size: 5428
+      md5: d3d05411bde352aee8f11c7074fbf691
+      size: 6699
     - path: src/gait/image/finetune.py
       hash: md5
       md5: b2baba240a798230ddad4d4f8416c957
@@ -1131,37 +1165,37 @@ stages:
     outs:
     - path: data/output/gait/image/resnet/tune/best_params.json
       hash: md5
-      md5: 61b593b90c52cae644450184df825358
-      size: 316
+      md5: e1f3078e9190f9d142a2d6bd506bd873
+      size: 317
   img_resnet_train:
     cmd: python -m experiments.gait_detection.image.resnet_train --config 
       configs/experiments/image/resnet_train.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/gait/image/resnet/loao/loao.json
       hash: md5
-      md5: 2328cbd6134f11ef1df762c6229d6e0f
-      size: 12292
+      md5: 984debab5a680d909d40eb3b878afb7c
+      size: 1858
     - path: data/output/gait/image/resnet/tune/best_params.json
       hash: md5
-      md5: 61b593b90c52cae644450184df825358
-      size: 316
+      md5: e1f3078e9190f9d142a2d6bd506bd873
+      size: 317
     - path: data/output/gait/image_features/
       hash: md5
-      md5: f98957d492933c8b91a66fdb1815ea3e.dir
-      size: 61337856
-      nfiles: 178
+      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
+      size: 585984
+      nfiles: 2
     - path: experiments/gait_detection/image/resnet_train.py
       hash: md5
-      md5: 7ad5af0756676853127db60f39247da2
-      size: 6042
+      md5: b2ac04cf6dc170029a677fe6a4ed4c75
+      size: 6273
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: 6296e9b0617650e8104940ecf4c8a593
-      size: 5428
+      md5: d3d05411bde352aee8f11c7074fbf691
+      size: 6699
     - path: src/gait/image/finetune.py
       hash: md5
       md5: b2baba240a798230ddad4d4f8416c957
@@ -1169,41 +1203,45 @@ stages:
     outs:
     - path: data/output/gait/image/resnet/train/checkpoint.pt
       hash: md5
-      md5: 91a2f04dffcac05170b409b22e1b6a1a
-      size: 44793547
+      md5: 357a8d032fea944c4be737fc8aa8005e
+      size: 44791883
     - path: data/output/gait/image/resnet/train/resnet_training.json
       hash: md5
-      md5: df4d7587a9102ca35537f843d36c0698
-      size: 372
+      md5: e2886408ff31411a2d497f9c385b1b66
+      size: 375
   img_resnet_infer:
     cmd: python -m experiments.gait_detection.image.resnet_infer --config 
       configs/experiments/image/resnet_infer.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
+    - path: data/output/annotations/tempos/ml_labels.csv
+      hash: md5
+      md5: aad4f3291309fdd27ea235cca3545610
+      size: 1576955
     - path: data/output/gait/image/resnet/train/checkpoint.pt
       hash: md5
-      md5: 91a2f04dffcac05170b409b22e1b6a1a
-      size: 44793547
+      md5: 357a8d032fea944c4be737fc8aa8005e
+      size: 44791883
     - path: data/output/gait/image/resnet/tune/best_params.json
       hash: md5
-      md5: 61b593b90c52cae644450184df825358
-      size: 316
+      md5: e1f3078e9190f9d142a2d6bd506bd873
+      size: 317
     - path: data/output/gait/image_features/
       hash: md5
-      md5: f98957d492933c8b91a66fdb1815ea3e.dir
-      size: 61337856
-      nfiles: 178
+      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
+      size: 585984
+      nfiles: 2
     - path: experiments/gait_detection/image/resnet_infer.py
       hash: md5
-      md5: 9f940bd01dfc26b4c1d405bd08542241
-      size: 5935
+      md5: f7e2171ac695d75f741eb9c62b4015d8
+      size: 7434
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: 6296e9b0617650e8104940ecf4c8a593
-      size: 5428
+      md5: d3d05411bde352aee8f11c7074fbf691
+      size: 6699
     - path: src/gait/image/finetune.py
       hash: md5
       md5: b2baba240a798230ddad4d4f8416c957
@@ -1211,42 +1249,42 @@ stages:
     outs:
     - path: data/output/gait/image/resnet/infer/manifest.json
       hash: md5
-      md5: 35d706a1fc24bfc202d10bd3bd79a86b
-      size: 50321
+      md5: 355c9e98c8f393afd58339648bcc0193
+      size: 951
     - path: data/output/gait/image/resnet/infer/probs/
       hash: md5
-      md5: 1e90adf5d903113ee311c9f0cce9fa81.dir
-      size: 297980
-      nfiles: 178
+      md5: 5c5a686cfe06ce09f20e52f968f3d173.dir
+      size: 1876
+      nfiles: 2
   pose_xgb_loao:
     cmd: python -m experiments.gait_detection.pose_data.xgb_loao --config 
       configs/experiments/pose_data/xgb_loao.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/gait/pose_data/stage3/best_params.json
       hash: md5
-      md5: f76b77dcd9edb2691d1ee7b7e31118e9
-      size: 489
+      md5: b9818ef31601914ece285954c62ffee6
+      size: 490
     - path: data/output/pose/tuned_yolo/
       hash: md5
-      md5: bdb39163c55b25f1e99c1e56cddc367a.dir
-      size: 866625330
-      nfiles: 773
+      md5: 055f82d445990f0051a7f289587cbefc.dir
+      size: 717643281
+      nfiles: 876
     - path: experiments/gait_detection/pose_data/xgb_loao.py
       hash: md5
-      md5: 39ea67ab5fc5a56d60676d807e1981e8
-      size: 7429
+      md5: 9550f21bf37145f786a19297ea74b688
+      size: 7712
     - path: src/gait/detection/metrics.py
       hash: md5
       md5: 917f2f5c4d939e15898eb419d6c68bff
       size: 5521
     - path: src/gait/gait_data/dataset.py
       hash: md5
-      md5: a56da81e9dadb639942ba93d524bcd5b
-      size: 14941
+      md5: 5cfecbc8056ce9838229e0846c706fd5
+      size: 21277
     params:
       configs/experiments/pose_data/xgb_loao.yaml:
         experiment.feature_idx:
@@ -1273,51 +1311,51 @@ stages:
     outs:
     - path: data/output/gait/pose_data/xgb_loao/loao.json
       hash: md5
-      md5: b734906f59b5e5acf0016a5b39e3e213
-      size: 11470
+      md5: b757996574268b98493443e2f0ac10dc
+      size: 1749
     - path: data/output/gait/pose_data/xgb_loao/manifest.json
       hash: md5
-      md5: 4b7ef2ef92aef72d532647f1fbf1df3e
-      size: 46052
+      md5: b1b9462d34d22f56ad0f6f61fe6f4c83
+      size: 1147
     - path: data/output/gait/pose_data/xgb_loao/probs/
       hash: md5
-      md5: ec56e1a45ef0b49e54b322b5aeaed115.dir
-      size: 231648
-      nfiles: 162
+      md5: ab3007ad5f1c2939f65c9a117f5942c7.dir
+      size: 1888
+      nfiles: 2
   img_resnet_loao:
     cmd: python -m experiments.gait_detection.image.resnet_loao --config 
       configs/experiments/image/resnet_loao.yaml
     deps:
     - path: data/input/optojump/
       hash: md5
-      md5: 718bd01c12d69a3c08eb56bf4abbc8b3.dir
-      size: 990259148
+      md5: 4c27de2a1a15254063d4d5553b0d6eba.dir
+      size: 255701835
       nfiles: 184
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/gait/image/resnet/tune/best_params.json
       hash: md5
-      md5: 61b593b90c52cae644450184df825358
-      size: 316
+      md5: e1f3078e9190f9d142a2d6bd506bd873
+      size: 317
     - path: data/output/pose/tuned_yolo/000332/optojump
       hash: md5
-      md5: 438f76e033a312b6c2fe521467273db9.dir
-      size: 129803437
-      nfiles: 180
+      md5: d149bd72a82683c17c57947507498705.dir
+      size: 128603964
+      nfiles: 179
     - path: experiments/gait_detection/image/resnet_loao.py
       hash: md5
-      md5: 15e1902467996c191cadc9122c75d430
-      size: 13188
+      md5: 83192945e565ae6ba9bb7f115b63f7cd
+      size: 13432
     - path: src/gait/detection/metrics.py
       hash: md5
       md5: 917f2f5c4d939e15898eb419d6c68bff
       size: 5521
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: 6296e9b0617650e8104940ecf4c8a593
-      size: 5428
+      md5: d3d05411bde352aee8f11c7074fbf691
+      size: 6699
     - path: src/gait/image/finetune.py
       hash: md5
       md5: b2baba240a798230ddad4d4f8416c957
@@ -1330,57 +1368,166 @@ stages:
     outs:
     - path: data/output/gait/image/resnet/loao/loao.json
       hash: md5
-      md5: 2328cbd6134f11ef1df762c6229d6e0f
-      size: 12292
+      md5: 984debab5a680d909d40eb3b878afb7c
+      size: 1858
     - path: data/output/gait/image/resnet/loao/manifest.json
       hash: md5
-      md5: cddb0d2acd22b3a75cfb6e7a384e3d81
-      size: 45759
+      md5: cfa37fbb78269349917714bdda32a718
+      size: 994
     - path: data/output/gait/image/resnet/loao/probs/
       hash: md5
-      md5: 0a2772545313e90ed4c32545fa4e6af0.dir
-      size: 271416
-      nfiles: 162
+      md5: dd6e58a8b54e116a0212fe048c7febeb.dir
+      size: 1876
+      nfiles: 2
   img_xgb_loao:
     cmd: python -m experiments.gait_detection.image.xgb_loao --config 
       configs/experiments/image/xgb_loao.yaml
     deps:
-    - path: data/output/annotations/optojump/ml_training_dataset.csv
+    - path: data/output/annotations/optojump/visibility_annotations.csv
       hash: md5
-      md5: 18390163a05049da8e372804fdece11f
-      size: 1902774
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
     - path: data/output/gait/image/stage1/results.json
       hash: md5
-      md5: b8794456ea7dd5c74f57dce30a5fa2aa
-      size: 596
+      md5: 3f0eae68c778e2ee49148edc410e4990
+      size: 551
     - path: data/output/gait/image_features/
       hash: md5
-      md5: f98957d492933c8b91a66fdb1815ea3e.dir
-      size: 61337856
-      nfiles: 178
+      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
+      size: 585984
+      nfiles: 2
     - path: experiments/gait_detection/image/xgb_loao.py
       hash: md5
-      md5: 5033680adc705329559132d92de74546
-      size: 7386
+      md5: f9d1807c67d0bc12b09f681f47d1bfef
+      size: 7621
     - path: src/gait/detection/metrics.py
       hash: md5
       md5: 917f2f5c4d939e15898eb419d6c68bff
       size: 5521
     - path: src/gait/image/dataset.py
       hash: md5
-      md5: 6296e9b0617650e8104940ecf4c8a593
-      size: 5428
+      md5: d3d05411bde352aee8f11c7074fbf691
+      size: 6699
     outs:
     - path: data/output/gait/image/xgb_loao/loao.json
       hash: md5
-      md5: e98d9427ce8d34b9d0fe4dca8ccd8398
-      size: 11512
+      md5: 380c10136e170bd9f15fefe90a149a38
+      size: 1816
     - path: data/output/gait/image/xgb_loao/manifest.json
       hash: md5
-      md5: 01fa49e3ed4924c97e0170d6f2e4c2da
-      size: 45269
+      md5: 556acd4fbbce44d2efbab36aad44f196
+      size: 982
     - path: data/output/gait/image/xgb_loao/probs/
       hash: md5
-      md5: 7f4a77efae2b5879be26c56eb0720814.dir
-      size: 271416
-      nfiles: 162
+      md5: e811b6760214dfa0923b0e6a90798831.dir
+      size: 1876
+      nfiles: 2
+  pose_xgb_infer:
+    cmd: python -m experiments.gait_detection.pose_data.xgb_infer --config 
+      configs/experiments/pose_data/xgb_inference.yaml
+    deps:
+    - path: data/output/annotations/optojump/visibility_annotations.csv
+      hash: md5
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
+    - path: data/output/annotations/tempos/ml_labels.csv
+      hash: md5
+      md5: aad4f3291309fdd27ea235cca3545610
+      size: 1576955
+    - path: data/output/gait/pose_data/stage3/best_params.json
+      hash: md5
+      md5: b9818ef31601914ece285954c62ffee6
+      size: 490
+    - path: data/output/pose/tuned_yolo/
+      hash: md5
+      md5: 055f82d445990f0051a7f289587cbefc.dir
+      size: 717643281
+      nfiles: 876
+    - path: experiments/gait_detection/pose_data/xgb_infer.py
+      hash: md5
+      md5: da77dc62e668a74b353e40948a46cd1c
+      size: 6247
+    - path: src/gait/detection/train.py
+      hash: md5
+      md5: 0ea4c3251c0f134b891e36046d948e4b
+      size: 6773
+    - path: src/gait/gait_data/dataset.py
+      hash: md5
+      md5: 5cfecbc8056ce9838229e0846c706fd5
+      size: 21277
+    params:
+      configs/experiments/pose_data/xgb_inference.yaml:
+        experiment.feature_idx:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+        - 7
+        - 8
+        - 9
+        - 10
+        - 11
+        - 12
+        - 13
+        - 14
+        - 15
+        - 16
+        - 17
+        - 18
+        - 19
+    outs:
+    - path: data/output/gait/pose_data/xgb_infer/manifest.json
+      hash: md5
+      md5: bb7076dd7f543c7378cd756048e6683a
+      size: 1149
+    - path: data/output/gait/pose_data/xgb_infer/probs/
+      hash: md5
+      md5: 3aa3bb21f0c32bc8c27a3631b3007535.dir
+      size: 1888
+      nfiles: 2
+  img_xgb_infer:
+    cmd: python -m experiments.gait_detection.image.xgb_infer --config 
+      configs/experiments/image/xgb_inference.yaml
+    deps:
+    - path: data/output/annotations/optojump/visibility_annotations.csv
+      hash: md5
+      md5: 5d4c065de15a44f16ca4de60e8743bac
+      size: 1574254
+    - path: data/output/annotations/tempos/ml_labels.csv
+      hash: md5
+      md5: aad4f3291309fdd27ea235cca3545610
+      size: 1576955
+    - path: data/output/gait/image/stage1/results.json
+      hash: md5
+      md5: 3f0eae68c778e2ee49148edc410e4990
+      size: 551
+    - path: data/output/gait/image_features/
+      hash: md5
+      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
+      size: 585984
+      nfiles: 2
+    - path: experiments/gait_detection/image/xgb_infer.py
+      hash: md5
+      md5: 0d3428901f9607171e09f2c3af6ee2fc
+      size: 6499
+    - path: src/gait/detection/train.py
+      hash: md5
+      md5: 0ea4c3251c0f134b891e36046d948e4b
+      size: 6773
+    - path: src/gait/image/dataset.py
+      hash: md5
+      md5: d3d05411bde352aee8f11c7074fbf691
+      size: 6699
+    outs:
+    - path: data/output/gait/image/xgb_infer/manifest.json
+      hash: md5
+      md5: 41d0afa2fe3209b8609fa3ebe749bb40
+      size: 967
+    - path: data/output/gait/image/xgb_infer/probs/
+      hash: md5
+      md5: ac7ae60d62ea607a5c2a36e6381d8a61.dir
+      size: 1876
+      nfiles: 2

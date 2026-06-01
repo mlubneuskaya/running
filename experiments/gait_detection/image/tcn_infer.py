@@ -27,7 +27,7 @@ import torch
 import torch.nn.functional as F
 
 import src.gait.detection.dilations as dilation_schedules
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config, get_test_dataset_params
 from experiments.gait_detection.study_utils import load_study, params_from_trial
 from src.gait.detection.model import TCN
 from src.gait.detection.train import get_device
@@ -60,21 +60,34 @@ def main(
     video_input_dir: str,
     n_test: dict,
     seed: int,
+    test_image_cfg: dict | None = None,
 ) -> None:
     os.makedirs(output_dir, exist_ok=True)
     probs_dir = os.path.join(output_dir, "probs")
     os.makedirs(probs_dir, exist_ok=True)
 
     logger.info("Loading image dataset …")
-    all_records = load_image_dataset(cfg.annotations_csv, features_dir, video_input_dir)
+    all_records = load_image_dataset(cfg.annotations_csv, features_dir, video_input_dir, dataset=cfg.dataset)
     logger.info("%d records loaded.", len(all_records))
 
-    train_records, test_records, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
+    test_ds_params = get_test_dataset_params(cfg.dataset_config)
+    if test_ds_params is not None and test_image_cfg is not None:
+        train_records = all_records
+        test_records  = load_image_dataset(
+            test_ds_params["annotations_csv"],
+            test_image_cfg["features_dir"],
+            test_image_cfg.get("video_input_dir", "data/input/tempos"),
+            dataset=test_ds_params["dataset"],
+        )
+        test_athletes = sorted({r.athlete for r in test_records})
+        logger.info("Cross mode: %d train (optojump), %d test (tempos).",
+                    len(train_records), len(test_records))
+    else:
+        train_records, test_records, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
+        logger.info("Split: %d train  %d test.", len(train_records), len(test_records))
+
     n_features = all_records[0].features.shape[1]
-    logger.info(
-        "Split: %d train  %d test  n_features=%d",
-        len(train_records), len(test_records), n_features,
-    )
+    logger.info("n_features=%d", n_features)
 
     study        = load_study(study_cfg, cfg)
     trials_by_id = {t.number: t for t in study.trials}
@@ -172,10 +185,11 @@ if __name__ == "__main__":
     if not study_cfg:
         raise ValueError("'study' section is missing.")
 
-    split_cfg = load_config(raw["split_config"])
-    n_test    = split_cfg["n_test"]
-    seed      = split_cfg.get("seed", 42)
+    split_cfg      = get_split_config(cfg.dataset_config)
+    n_test         = split_cfg["n_test"]
+    seed           = split_cfg.get("seed", 42)
+    test_image_cfg = raw.get("test_dataset")
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     main(cfg, study_cfg, int(trial_id), output_dir, features_dir, video_input_dir,
-         n_test=n_test, seed=seed)
+         n_test=n_test, seed=seed, test_image_cfg=test_image_cfg)

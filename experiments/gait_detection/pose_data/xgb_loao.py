@@ -28,7 +28,7 @@ import mlflow
 import numpy as np
 import xgboost as xgb
 
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config
 from src.gait.detection.metrics import (
     aggregate_confusion_matrices,
     confusion_matrix,
@@ -63,7 +63,7 @@ def main(cfg: ExperimentConfig, best_params: dict, output_dir: str, n_test: dict
     os.makedirs(probs_dir, exist_ok=True)
 
     logger.info("Loading dataset …")
-    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps, n_trim_padding=cfg.n_trim_padding, dataset=cfg.dataset)
     logger.info("%d records loaded.", len(all_records))
 
     records, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
@@ -200,7 +200,7 @@ if __name__ == "__main__":
     if cfg.feature_idx is None and "feature_idx" in _bp and _bp["feature_idx"] is not None:
         cfg.feature_idx = _bp["feature_idx"]
 
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

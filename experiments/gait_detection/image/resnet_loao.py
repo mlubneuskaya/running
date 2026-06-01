@@ -34,7 +34,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config
 from src.gait.detection.metrics import (
     aggregate_confusion_matrices,
     confusion_matrix,
@@ -364,7 +364,7 @@ if __name__ == "__main__":
     bbox_padding  = _bp.get("bbox_padding",  bbox_padding)
 
     logger.info("Loaded best params from %s: %s", best_params_json, params)
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

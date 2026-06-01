@@ -102,11 +102,10 @@ stages:
       - src/gait/detection/detectors.py
       - src/gait/detection/features.py
       - src/gait/gait_data/dataset.py
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
       - data/output/pose/tuned_yolo/
     params:
       - configs/experiments/pose_data/baselines.yaml:
-          - experiment.fps
           - experiment.n_val_athletes_tuning
           - experiment.random_seed
     metrics:
@@ -120,7 +119,7 @@ stages:
       - src/gait/detection/model.py
       - src/gait/detection/train.py
       - src/gait/gait_data/dataset.py
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
       - data/output/pose/tuned_yolo/
     params:
       - configs/experiments/pose_data/tcn_tuning.yaml:
@@ -139,7 +138,7 @@ stages:
       - experiments/gait_detection/pose_data/xgb_tuning.py
       - src/gait/detection/features.py
       - src/gait/gait_data/dataset.py
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
       - data/output/pose/tuned_yolo/
     params:
       - configs/experiments/pose_data/xgb_tuning.yaml:
@@ -157,7 +156,7 @@ stages:
       - src/gait/detection/metrics.py
       - src/gait/gait_data/dataset.py
       - data/output/gait/pose_data/stage3/best_params.json
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
       - data/output/pose/tuned_yolo/
     params:
       - configs/experiments/pose_data/xgb_loao.yaml:
@@ -176,7 +175,7 @@ stages:
       - src/gait/detection/train.py
       - src/gait/gait_data/dataset.py
       - data/output/gait/pose_data/stage2/best_params.json
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
       - data/output/pose/tuned_yolo/
     params:
       - configs/experiments/pose_data/tcn_leave_one_out.yaml:
@@ -197,7 +196,7 @@ stages:
       - src/gait/gait_data/dataset.py
       - data/output/gait/pose_data/stage2/best_params.json
       - data/output/gait/pose_data/stage4/
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
       - data/output/pose/tuned_yolo/
     params:
       - configs/experiments/pose_data/tcn_training.yaml:
@@ -217,7 +216,8 @@ stages:
       - src/gait/detection/model.py
       - src/gait/gait_data/dataset.py
       - data/output/gait/pose_data/stage5/
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
+      - data/output/annotations/tempos/ml_labels.csv
       - data/output/pose/tuned_yolo/
     params:
       - configs/experiments/pose_data/tcn_inference.yaml:
@@ -237,8 +237,13 @@ stages:
       - experiments/gait_detection/image/feature_extract.py
       - src/gait/image/extractor.py
       - configs/experiments/image/feature_extract.yaml
+      - configs/dataset.yaml
       - data/input/optojump/
+      - data/input/tempos/
+      - data/output/annotations/optojump/visibility_annotations.csv
+      - data/output/annotations/tempos/ml_labels.csv
       - data/output/pose/tuned_yolo/000332/optojump
+      - data/output/pose/tuned_yolo/000332/tempos
     params:
       - configs/experiments/image/feature_extract.yaml:
           - backbone
@@ -246,6 +251,7 @@ stages:
           - bbox_padding
     outs:
       - data/output/gait/image_features/
+      - data/output/gait/image_features_tempos/
 
   # ── Stage II — per-frame XGBoost baseline with Optuna tuning ────────────────
   img_baselines:
@@ -256,7 +262,7 @@ stages:
       - src/gait/detection/metrics.py
       - configs/experiments/image/baselines.yaml
       - data/output/gait/image_features/
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
     params:
       - configs/experiments/image/baselines.yaml:
           - optuna.n_trials
@@ -275,7 +281,7 @@ stages:
       - src/gait/detection/train.py
       - configs/experiments/image/tcn_tuning.yaml
       - data/output/gait/image_features/
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
     params:
       - configs/experiments/image/tcn_tuning.yaml:
           - optuna.n_trials
@@ -295,7 +301,7 @@ stages:
       - src/gait/detection/train.py
       - data/output/gait/image/stage2/best_params.json
       - data/output/gait/image_features/
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
     params:
       - configs/experiments/image/tcn_leave_one_out.yaml:
           - experiment.max_epochs
@@ -315,7 +321,7 @@ stages:
       - data/output/gait/image/stage2/best_params.json
       - data/output/gait/image/stage4/
       - data/output/gait/image_features/
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
     params:
       - configs/experiments/image/tcn_training.yaml:
           - experiment.batch_size
@@ -332,7 +338,8 @@ stages:
       - src/gait/detection/model.py
       - data/output/gait/image/stage5/
       - data/output/gait/image_features/
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
+      - data/output/annotations/tempos/ml_labels.csv
     params:
       - configs/experiments/image/tcn_inference.yaml:
           - experiment.n_classes
@@ -349,7 +356,7 @@ stages:
       - src/gait/detection/metrics.py
       - data/output/gait/image/stage1/results.json
       - data/output/gait/image_features/
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
     outs:
       - data/output/gait/image/xgb_loao/manifest.json
       - data/output/gait/image/xgb_loao/loao.json
@@ -364,6 +371,7 @@ stages:
       - src/gait/detection/train.py
       - data/output/gait/pose_data/stage3/best_params.json
       - data/output/annotations/optojump/visibility_annotations.csv
+      - data/output/annotations/tempos/ml_labels.csv
       - data/output/pose/tuned_yolo/
     params:
       - configs/experiments/pose_data/xgb_inference.yaml:
@@ -382,6 +390,7 @@ stages:
       - data/output/gait/image/stage1/results.json
       - data/output/gait/image_features/
       - data/output/annotations/optojump/visibility_annotations.csv
+      - data/output/annotations/tempos/ml_labels.csv
     outs:
       - data/output/gait/image/xgb_infer/manifest.json
       - data/output/gait/image/xgb_infer/probs/
@@ -394,7 +403,7 @@ stages:
       - src/gait/image/finetune.py
       - src/gait/image/dataset.py
       - data/output/gait/image_features/
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
     params:
       - configs/experiments/image/resnet_tune.yaml:
           - optuna.n_trials
@@ -412,7 +421,7 @@ stages:
       - src/gait/image/dataset.py
       - src/gait/detection/metrics.py
       - data/output/gait/image/resnet/tune/best_params.json
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
       - data/output/pose/tuned_yolo/000332/optojump
       - data/input/optojump/
     params:
@@ -434,7 +443,7 @@ stages:
       - data/output/gait/image_features/
       - data/output/gait/image/resnet/tune/best_params.json
       - data/output/gait/image/resnet/loao/loao.json
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
     outs:
       - data/output/gait/image/resnet/train/checkpoint.pt:
           cache: true
@@ -449,7 +458,8 @@ stages:
       - data/output/gait/image_features/
       - data/output/gait/image/resnet/train/checkpoint.pt
       - data/output/gait/image/resnet/tune/best_params.json
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
+      - data/output/annotations/tempos/ml_labels.csv
     outs:
       - data/output/gait/image/resnet/infer/manifest.json
       - data/output/gait/image/resnet/infer/probs/
@@ -463,7 +473,7 @@ stages:
       -k python3
     deps:
       - notebooks/eda_training_dataset.ipynb
-      - data/output/annotations/optojump/ml_training_dataset.csv
+      - data/output/annotations/optojump/visibility_annotations.csv
     outs:
       - data/output/gait/notebooks/eda_training_dataset.ipynb:
           cache: false

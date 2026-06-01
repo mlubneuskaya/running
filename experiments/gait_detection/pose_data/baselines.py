@@ -32,7 +32,7 @@ import xgboost as xgb
 
 logger = logging.getLogger(__name__)
 
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config
 from src.gait.detection.detectors import KinematicDetector
 from src.pose.utils.load_config import load_config
 from src.gait.detection.metrics import timing_error_full, per_class_f1, confusion_matrix
@@ -172,7 +172,7 @@ def main(cfg: ExperimentConfig | None = None, *, n_test: dict, seed: int) -> Non
     cfg = cfg or ExperimentConfig()
     mlflow.set_experiment("gait_pose_baselines")
 
-    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps, n_trim_padding=cfg.n_trim_padding, dataset=cfg.dataset)
     records, _, _ = train_test_split(all_records, n_test=n_test, seed=seed)
 
     train_records, val_records = tuning_split(
@@ -222,7 +222,7 @@ if __name__ == "__main__":
     )
     raw = load_config(args.config)
     cfg = ExperimentConfig(**raw.get("experiment", {}))
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

@@ -63,7 +63,14 @@ def aggregate_experiment_results(
             pose_data = pose_data[first_f : last_f + 1]
 
         records = [row if row is not None else {} for row in pose_data]
-        df_raw = pd.DataFrame(records)[keypoints_list]
+        df_raw = pd.DataFrame(records)
+        missing = [k for k in keypoints_list if k not in df_raw.columns]
+        if missing:
+            print(f"  ⚠ skipping {video_key}: no detections in analysis window "
+                  f"(frame_range={frame_ranges.get(path) if frame_ranges else 'all'}, "
+                  f"pose_len={len(raw_json['pose_data'])})")
+            continue
+        df_raw = df_raw[keypoints_list]
         df_coords = expand_lists_to_cols(df_raw)
 
         df_links = calculate_link_metrics(df_coords, links=links_dict)

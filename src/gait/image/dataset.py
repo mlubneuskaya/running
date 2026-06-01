@@ -96,10 +96,16 @@ def load_image_dataset(
                 f"first_ann={first_ann}, last_ann={last_ann}, T={T}"
             )
 
-        person_id = int(group["person_id"].iloc[0]) if "person_id" in group.columns else -1
+        raw_pid = group["person_id"].iloc[0] if "person_id" in group.columns else None
+        if raw_pid is None or pd.isna(raw_pid):
+            person_id = -1
+            athlete   = _athlete_from_path(video_path)
+        else:
+            person_id = int(raw_pid)
+            athlete   = _athlete_key(video_path, person_id, dataset)
         records.append(VideoRecord(
             video_path=video_path,
-            athlete=_athlete_key(video_path, person_id, dataset),
+            athlete=athlete,
             features=features[start_idx:end_idx],
             labels=labels[start_idx:end_idx],
             person_id=person_id,
@@ -157,11 +163,17 @@ def load_image_records_for_finetune(
         start_idx = max(0, first_ann - ANNOTATION_PADDING)
         end_idx   = min(T, last_ann  + ANNOTATION_PADDING + 1)
 
-        person_id = int(group["person_id"].iloc[0]) if "person_id" in group.columns else -1
+        raw_pid = group["person_id"].iloc[0] if "person_id" in group.columns else None
+        if raw_pid is None or pd.isna(raw_pid):
+            person_id = -1
+            athlete   = _athlete_from_path(video_path)
+        else:
+            person_id = int(raw_pid)
+            athlete   = _athlete_key(video_path, person_id, dataset)
         out.append((
             VideoRecord(
                 video_path=video_path,
-                athlete=_athlete_key(video_path, person_id, dataset),
+                athlete=athlete,
                 features=np.empty((end_idx - start_idx, 0), dtype=np.float32),
                 labels=labels[start_idx:end_idx],
                 person_id=person_id,

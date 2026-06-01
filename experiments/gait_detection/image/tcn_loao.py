@@ -3,10 +3,9 @@
 Mirrors tcn_leave_one_out.py but uses pre-extracted CNN image features.
 Each LOAO run is logged as an MLflow parent run; each fold is a nested child.
 
-When trial_ids is not set and best_params_json points at the stage 2 output,
-all trials listed under "top_trials" are evaluated automatically.  After all
-trials complete the winner (highest macro_f1_mean) is written to loao_best.json
-for stage 5 to consume.
+Runs LOAO for exactly one trial, auto-selected from best_params_json.
+Writes loao_trial.json (fold metrics) and loao_best.json (trial ID + params
+forwarded to stage 5 — no comparison, just one trial).
 
 Usage
 -----
@@ -15,9 +14,9 @@ Usage
 
 Output
 ------
-    <output_dir>/loao_trial_<id>.json   — per-fold metrics for each trial
-    <output_dir>/loao_best.json         — best trial selected by macro F1
-    <checkpoint_dir>/loao_<id>_<athlete>.pt
+    <output_dir>/loao_trial.json   — per-fold metrics
+    <output_dir>/loao_best.json    — trial ID + params forwarded to stage 5
+    <checkpoint_dir>/loao_<athlete>.pt
 """
 
 from __future__ import annotations
@@ -36,7 +35,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 import src.gait.detection.dilations as dilation_schedules
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config
 from experiments.gait_detection.study_utils import load_study, params_from_trial
 from src.gait.detection.metrics import (
     aggregate_confusion_matrices,
@@ -295,7 +294,7 @@ if __name__ == "__main__":
         raise ValueError("'study' section is missing in the config.")
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

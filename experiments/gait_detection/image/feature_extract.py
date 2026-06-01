@@ -1,13 +1,17 @@
 """Image feature extraction — run CNN backbone on video crops from pose bboxes.
 
-Reads the annotations CSV to find all videos, maps each to its pose JSON (for
-bounding boxes), extracts per-frame CNN features, and saves one .npy file per
-video under features_dir.
+Reads the active dataset mode from configs/dataset.yaml to determine which
+videos to process, mirroring how every other image stage loads its data.
+
+Mode → datasets processed:
+  optojump → optojump only
+  tempos   → tempos only
+  cross    → optojump (train) + tempos (test)
+  smoke    → smoke subset (saves into the optojump features dir)
 
 Usage
 -----
-    python -m experiments.gait_detection.img_feature_extract
-    python -m experiments.gait_detection.img_feature_extract --config configs/experiments/image/feature_extract.yaml
+    python -m experiments.gait_detection.image.feature_extract --config configs/experiments/image/feature_extract.yaml
 
 Output
 ------
@@ -20,13 +24,14 @@ import argparse
 import logging
 import os
 
+import numpy as np
 import pandas as pd
 
+from src.gait.detection.train import get_device
 from src.gait.image.extractor import ImageFeatureExtractor
 from src.pose.utils.load_config import load_config
 
 logger = logging.getLogger(__name__)
-
 
 
 def _pose_json_path(video_path: str, pose_dir: str, video_input_dir: str) -> str:
@@ -41,7 +46,7 @@ def _feature_out_path(video_path: str, features_dir: str, video_input_dir: str) 
     return os.path.join(features_dir, rel + ".npy")
 
 
-def main(
+def extract_dataset(
     annotations_csv: str,
     video_input_dir: str,
     pose_dir: str,
@@ -50,7 +55,7 @@ def main(
 ) -> None:
     ann_df = pd.read_csv(annotations_csv)
     video_paths = ann_df["video_path"].unique().tolist()
-    logger.info("%d videos to process.", len(video_paths))
+    logger.info("%d videos to process from %s.", len(video_paths), annotations_csv)
 
     for i, video_path in enumerate(video_paths, 1):
         pose_path = _pose_json_path(video_path, pose_dir, video_input_dir)
@@ -65,12 +70,22 @@ def main(
 
         logger.info("[%d/%d] %s", i, len(video_paths), video_path)
         features = extractor.extract_video(video_path, pose_path)
-
-        import numpy as np
         np.save(out_path, features)
         logger.info("  Saved %s  shape=%s", out_path, features.shape)
 
-    logger.info("Feature extraction complete. Features in: %s", features_dir)
+    logger.info("Done. Features saved to: %s", features_dir)
+
+
+def _datasets_for_mode(mode: str, datasets_cfg: dict) -> list[dict]:
+    """Return the list of dataset configs to process for the given mode."""
+    if mode == "cross":
+        return [datasets_cfg["optojump"], datasets_cfg["tempos"]]
+    if mode in datasets_cfg:
+        return [datasets_cfg[mode]]
+    raise ValueError(
+        f"Unknown mode {mode!r}. Add an entry under 'datasets' in feature_extract.yaml "
+        f"or choose from: {list(datasets_cfg)}."
+    )
 
 
 if __name__ == "__main__":
@@ -81,16 +96,28 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     raw = load_config(args.config)
 
+    dc   = load_config(raw["dataset_config"])
+    mode = dc["mode"]
+    logger.info("Active mode: %s", mode)
+
+    device    = raw.get("device") or str(get_device())
     extractor = ImageFeatureExtractor(
         backbone=raw["backbone"],
-        device=raw["device"],
+        device=device,
         img_size=raw["img_size"],
         bbox_padding=raw["bbox_padding"],
     )
-    main(
-        annotations_csv=raw["annotations_csv"],
-        video_input_dir=raw["video_input_dir"],
-        pose_dir=raw["pose_dir"],
-        features_dir=raw["features_dir"],
-        extractor=extractor,
-    )
+
+    # Ensure every configured output directory exists so DVC never sees a
+    # missing output, even for datasets that aren't processed in this mode.
+    for ds_cfg in raw["datasets"].values():
+        os.makedirs(ds_cfg["features_dir"], exist_ok=True)
+
+    for ds in _datasets_for_mode(mode, raw["datasets"]):
+        extract_dataset(
+            annotations_csv=ds["annotations_csv"],
+            video_input_dir=ds["video_input_dir"],
+            pose_dir=ds["pose_dir"],
+            features_dir=ds["features_dir"],
+            extractor=extractor,
+        )

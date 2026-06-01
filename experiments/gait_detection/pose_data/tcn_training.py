@@ -29,7 +29,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 import src.gait.detection.dilations as dilation_schedules
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config
 from experiments.gait_detection.study_utils import load_study, params_from_trial
 from src.gait.detection.model import TCN
 from src.gait.detection.train import train_epoch, get_device, seed_everything
@@ -42,11 +42,11 @@ logger = logging.getLogger(__name__)
 
 def epochs_from_loao(trial_id: int, loao_dir: str) -> int:
     """Return the mean best_epoch across LOAO folds for this trial."""
-    path = os.path.join(loao_dir, f"loao_trial_{trial_id}.json")
+    path = os.path.join(loao_dir, "loao_trial.json")
     if not os.path.exists(path):
         raise FileNotFoundError(
-            f"LOAO JSON not found for trial {trial_id}: {path}\n"
-            f"Run stage 4 (tcn_leave_one_out) for this trial first."
+            f"LOAO JSON not found: {path}\n"
+            f"Run stage 4 (tcn_leave_one_out) first."
         )
 
     with open(path) as f:
@@ -120,7 +120,7 @@ def train_trial(
         ckpt_path = cfg.checkpoint_path(f"checkpoint")
         torch.save(model.state_dict(), ckpt_path)
         mlflow.log_metric("final_loss", train_losses[-1])
-        mlflow.log_artifact(ckpt_path, artifact_path="checkpoints")
+        mlflow.log_param("checkpoint_path", ckpt_path)
         logger.info("Trial %d  saved → %s", trial_id, ckpt_path)
 
     return {
@@ -146,7 +146,7 @@ def main(
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_pose_tcn_training")
     logger.info("Loading dataset …")
-    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps, n_trim_padding=cfg.n_trim_padding, dataset=cfg.dataset)
     logger.info("%d videos loaded.", len(all_records))
 
     records, test_records, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
@@ -217,7 +217,7 @@ if __name__ == "__main__":
     if not loao_dir:
         raise ValueError("'loao_dir' is missing in the config.")
 
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

@@ -27,7 +27,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 import src.gait.detection.dilations as dilation_schedules
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config
 from experiments.gait_detection.study_utils import load_study, params_from_trial
 from experiments.gait_detection.pose_data.tcn_training import epochs_from_loao
 from src.gait.detection.model import TCN
@@ -89,7 +89,7 @@ def train_trial(
         ckpt_path = cfg.checkpoint_path("checkpoint")
         torch.save(model.state_dict(), ckpt_path)
         mlflow.log_metric("final_loss",   train_losses[-1])
-        mlflow.log_artifact(ckpt_path, artifact_path="checkpoints")
+        mlflow.log_param("checkpoint_path", ckpt_path)
         logger.info("Saved checkpoint → %s", ckpt_path)
 
     return {
@@ -187,7 +187,7 @@ if __name__ == "__main__":
     if not loao_dir:
         raise ValueError("'loao_dir' is missing.")
 
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

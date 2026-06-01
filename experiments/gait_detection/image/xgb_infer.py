@@ -31,7 +31,7 @@ import mlflow
 import numpy as np
 import xgboost as xgb
 
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config, get_test_dataset_params
 from src.gait.detection.train import seed_everything
 from src.gait.gait_data.dataset import train_test_split
 from src.gait.image.dataset import load_image_dataset
@@ -59,6 +59,7 @@ def main(
     output_dir: str,
     n_test: dict,
     seed: int,
+    test_image_cfg: dict | None = None,
 ) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_image_xgb_infer")
@@ -67,14 +68,27 @@ def main(
     os.makedirs(probs_dir, exist_ok=True)
 
     logger.info("Loading image dataset …")
-    all_records = load_image_dataset(cfg.annotations_csv, features_dir, video_input_dir)
+    all_records = load_image_dataset(cfg.annotations_csv, features_dir, video_input_dir, dataset=cfg.dataset)
     logger.info("%d records loaded.", len(all_records))
 
-    train_records, test_records, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
-    logger.info(
-        "Split: %d train records, %d test records (test athletes: %s).",
-        len(train_records), len(test_records), test_athletes,
-    )
+    test_ds_params = get_test_dataset_params(cfg.dataset_config)
+    if test_ds_params is not None and test_image_cfg is not None:
+        train_records = all_records
+        test_records  = load_image_dataset(
+            test_ds_params["annotations_csv"],
+            test_image_cfg["features_dir"],
+            test_image_cfg.get("video_input_dir", "data/input/tempos"),
+            dataset=test_ds_params["dataset"],
+        )
+        test_athletes = sorted({r.athlete for r in test_records})
+        logger.info("Cross mode: %d train (optojump), %d test (tempos).",
+                    len(train_records), len(test_records))
+    else:
+        train_records, test_records, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
+        logger.info(
+            "Split: %d train records, %d test records (test athletes: %s).",
+            len(train_records), len(test_records), test_athletes,
+        )
 
     X_train, y_train = _flatten(train_records)
     logger.info("Fitting XGBoost on %d frames …", len(y_train))
@@ -150,9 +164,11 @@ if __name__ == "__main__":
         _bp = json.load(_f)
     best_params = _bp["best_params"]
 
-    split_cfg = load_config(raw["split_config"])
-    n_test    = split_cfg["n_test"]
-    seed      = split_cfg.get("seed", 42)
+    split_cfg     = get_split_config(cfg.dataset_config)
+    n_test        = split_cfg["n_test"]
+    seed          = split_cfg.get("seed", 42)
+    test_image_cfg = raw.get("test_dataset")
 
     logger.info("Loaded best params from %s: %s", best_params_json, best_params)
-    main(cfg, best_params, features_dir, video_input_dir, output_dir, n_test=n_test, seed=seed)
+    main(cfg, best_params, features_dir, video_input_dir, output_dir,
+         n_test=n_test, seed=seed, test_image_cfg=test_image_cfg)

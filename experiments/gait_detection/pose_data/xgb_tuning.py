@@ -31,7 +31,7 @@ import xgboost as xgb
 
 logger = logging.getLogger(__name__)
 
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config
 from src.gait.detection.metrics import per_class_f1
 from src.gait.detection.train import seed_everything
 from src.gait.gait_data.dataset import load_dataset, tuning_split, train_test_split
@@ -83,7 +83,7 @@ def main(cfg: ExperimentConfig | None = None, n_trials: int = 50, *, n_test: dic
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_pose_xgb_tuning")
 
-    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps, n_trim_padding=cfg.n_trim_padding, dataset=cfg.dataset)
     records, _, _ = train_test_split(all_records, n_test=n_test, seed=seed)
     train_records, val_records = tuning_split(
         records, n_val_athletes=cfg.n_val_athletes_tuning, seed=cfg.random_seed
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     raw = load_config(args.config)
     cfg = ExperimentConfig(**raw.get("experiment", {}))
     n_trials = raw.get("optuna", {}).get("n_trials", 50)
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

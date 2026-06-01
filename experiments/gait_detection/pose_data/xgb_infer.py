@@ -1,11 +1,8 @@
-"""XGBoost inference — pose data: train final model and save per-record probabilities.
+"""XGBoost inference — save per-record probabilities for all records.
 
 Trains a single XGBoost model on all train athletes using the best hyperparameters
-from the tuning stage, then runs inference on every record (both train and test).
-Saves per-frame softmax probabilities and a manifest.json with correct split tags.
-
-Unlike xgb_loao.py (which only covers held-out train-set athletes), this script
-also covers the held-out test athletes so all records appear in the manifest.
+from the tuning stage, then runs inference on every record (train and test).
+Saves per-frame softmax probabilities and a manifest.json with split tags.
 
 Usage
 -----
@@ -30,7 +27,7 @@ import mlflow
 import numpy as np
 import xgboost as xgb
 
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config, get_test_dataset_params
 from src.gait.detection.train import seed_everything
 from src.gait.gait_data.dataset import load_dataset, train_test_split
 from src.pose.utils.load_config import load_config
@@ -52,7 +49,8 @@ def _flatten(records, feature_idx=None):
     return np.vstack(X).astype(np.float32), np.concatenate(y).astype(np.int64)
 
 
-def main(cfg: ExperimentConfig, best_params: dict, output_dir: str, n_test: dict, seed: int) -> None:
+def main(cfg: ExperimentConfig, best_params: dict, output_dir: str,
+         n_test: dict, seed: int) -> None:
     seed_everything(cfg.random_seed)
     mlflow.set_experiment("gait_pose_xgb_infer")
 
@@ -60,14 +58,28 @@ def main(cfg: ExperimentConfig, best_params: dict, output_dir: str, n_test: dict
     os.makedirs(probs_dir, exist_ok=True)
 
     logger.info("Loading dataset …")
-    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps,
+                               dataset=cfg.dataset, n_trim_padding=cfg.n_trim_padding)
     logger.info("%d records loaded.", len(all_records))
 
-    train_records, test_records, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
-    logger.info(
-        "Split: %d train records, %d test records (test athletes: %s).",
-        len(train_records), len(test_records), test_athletes,
-    )
+    test_dataset_params = get_test_dataset_params(cfg.dataset_config)
+    if test_dataset_params is not None:
+        train_records  = all_records
+        test_records   = load_dataset(
+            test_dataset_params["annotations_csv"],
+            fps=float(test_dataset_params["fps"]),
+            dataset=test_dataset_params["dataset"],
+            n_trim_padding=int(test_dataset_params["n_trim_padding"]),
+        )
+        test_athletes = sorted({r.athlete for r in test_records})
+        logger.info("Cross mode: %d train (optojump), %d test (tempos).",
+                    len(train_records), len(test_records))
+    else:
+        train_records, test_records, test_athletes = train_test_split(
+            all_records, n_test=n_test, seed=seed
+        )
+        logger.info("Split: %d train, %d test (test athletes: %s).",
+                    len(train_records), len(test_records), test_athletes)
 
     X_train, y_train = _flatten(train_records, cfg.feature_idx)
     logger.info("Fitting XGBoost on %d frames …", len(y_train))
@@ -101,9 +113,8 @@ def main(cfg: ExperimentConfig, best_params: dict, output_dir: str, n_test: dict
                     "n_frames":   int(probs.shape[0]),
                     "probs_path": out_path,
                 })
-                logger.info(
-                    "  [%s] %s → %s (%d frames)", split, rec.athlete, out_name, probs.shape[0]
-                )
+                logger.info("  [%s] %s → %s (%d frames)",
+                            split, rec.athlete, out_name, probs.shape[0])
 
         mlflow.log_metric("n_train_records", len(train_records))
         mlflow.log_metric("n_test_records",  len(test_records))
@@ -121,10 +132,8 @@ def main(cfg: ExperimentConfig, best_params: dict, output_dir: str, n_test: dict
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2)
     logger.info("Manifest saved → %s", manifest_path)
-    logger.info(
-        "Done — %d train + %d test records written to %s",
-        len(train_records), len(test_records), output_dir,
-    )
+    logger.info("Done — %d train + %d test records written to %s",
+                len(train_records), len(test_records), output_dir)
 
 
 if __name__ == "__main__":
@@ -146,7 +155,7 @@ if __name__ == "__main__":
     if cfg.feature_idx is None and "feature_idx" in _bp and _bp["feature_idx"] is not None:
         cfg.feature_idx = _bp["feature_idx"]
 
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

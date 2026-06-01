@@ -34,7 +34,7 @@ import torch
 import torch.nn.functional as F
 
 import src.gait.detection.dilations as dilation_schedules
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config, get_test_dataset_params
 from experiments.gait_detection.study_utils import load_study, params_from_trial
 from src.gait.detection.model import TCN
 from src.gait.gait_data.dataset import load_dataset, train_test_split
@@ -78,14 +78,27 @@ def main(
     os.makedirs(output_dir, exist_ok=True)
 
     logger.info("Loading dataset …")
-    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps)
+    all_records = load_dataset(cfg.annotations_csv, fps=cfg.fps, n_trim_padding=cfg.n_trim_padding, dataset=cfg.dataset)
     logger.info("%d records loaded.", len(all_records))
 
-    train_records, test_records, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
-    logger.info(
-        "Split: %d train records, %d test records (%s).",
-        len(train_records), len(test_records), test_athletes,
-    )
+    test_dataset_params = get_test_dataset_params(cfg.dataset_config)
+    if test_dataset_params is not None:
+        train_records = all_records
+        test_records  = load_dataset(
+            test_dataset_params["annotations_csv"],
+            fps=float(test_dataset_params["fps"]),
+            dataset=test_dataset_params["dataset"],
+            n_trim_padding=int(test_dataset_params["n_trim_padding"]),
+        )
+        test_athletes = sorted({r.athlete for r in test_records})
+        logger.info("Cross mode: %d train (optojump), %d test (tempos).",
+                    len(train_records), len(test_records))
+    else:
+        train_records, test_records, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
+        logger.info(
+            "Split: %d train records, %d test records (%s).",
+            len(train_records), len(test_records), test_athletes,
+        )
 
     logger.info("Loading Optuna study …")
     study        = load_study(study_cfg, cfg)
@@ -197,7 +210,7 @@ if __name__ == "__main__":
     if not study_cfg:
         raise ValueError("'study' section is missing in the config.")
 
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

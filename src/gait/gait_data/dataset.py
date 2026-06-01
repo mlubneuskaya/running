@@ -75,13 +75,16 @@ def _athlete_key(video_path: str, person_id: int, dataset: str) -> str:
     return _athlete_from_path(video_path)
 
 
-def _pose_path(video_path: str) -> str:
-    """Map a video_path (as stored in the CSV) to the corresponding pose JSON."""
+def _pose_path(video_path: str, pose_output_base: str = "data/output/pose/tuned_yolo/000332") -> str:
+    """Map a video_path (as stored in the CSV) to the corresponding pose JSON.
+
+    Works for any dataset under data/input/:
+      data/input/optojump/study_N/athlete.mov → <pose_output_base>/optojump/study_N/athlete.json
+      data/input/tempos/1/1.MP4              → <pose_output_base>/tempos/1/1.json
+    """
     base = os.path.splitext(video_path)[0]
-    # video_path is like  data/input/optojump/study_N/athlete_M.mov
-    # pose JSON is at     data/output/tuned_yolo/000332/optojump/study_N/athlete_M.json
-    rel = os.path.relpath(base, "data/input/optojump")
-    return os.path.join("data/output/pose/tuned_yolo/000332/optojump", rel + ".json")  # TODO make model id independent
+    rel = os.path.relpath(base, "data/input")
+    return os.path.join(pose_output_base, rel + ".json")
 
 
 _KEYPOINTS = [
@@ -97,7 +100,7 @@ _ANCHORS = [
 ]
 
 
-def _load_smooth(pose_path: str) -> pd.DataFrame | None:
+def _load_smooth(pose_path: str, fps: float = float(RECORDING_FPS)) -> pd.DataFrame | None:
     if not os.path.exists(pose_path):
         return None
     with open(pose_path) as f:
@@ -107,15 +110,29 @@ def _load_smooth(pose_path: str) -> pd.DataFrame | None:
         keypoints=_KEYPOINTS,
         anchors=_ANCHORS,
         keys_to_exclude={"bbox"},
-        fps=RECORDING_FPS,
+        fps=fps,
         cutoff=6.0,
     )
     if smooth.empty:
         return None
-    # Correct timestamps: cv2 reports 30 fps but actual rate is 120
-    CV2_FPS = 30
-    smooth["timestamp_ms"] = smooth["timestamp_ms"] * CV2_FPS / RECORDING_FPS
-    smooth["frame_index"] = (smooth["timestamp_ms"] / 1000 * RECORDING_FPS).round().astype(int)
+    # Some cameras encode with wrong 30fps metadata even though the actual rate
+    # is higher (e.g. optojump: 120fps content with 30fps PTS spacing ~33ms).
+    # cv2 assigns those wrong timestamps to every frame, so we scale them back.
+    # Videos with correct metadata already have the expected ~1000/fps ms spacing;
+    # applying the correction there would shrink frame indices, so we detect which
+    # case applies from the median inter-frame interval.
+    if len(smooth) > 1:
+        expected_ms      = 1000.0 / fps
+        median_ms        = float(np.median(np.diff(smooth["timestamp_ms"].values)))
+        if median_ms > expected_ms * 2:          # significantly larger → wrong metadata
+            smooth["timestamp_ms"] *= expected_ms / median_ms
+    smooth["frame_index"] = (smooth["timestamp_ms"] / 1000 * fps).round().astype(int)
+    # Deduplicate: some encodings can still map multiple entries to the same
+    # frame_index; keep one so row-index offsets stay aligned with frame numbers.
+    smooth = (smooth
+              .sort_values("frame_index")
+              .drop_duplicates(subset="frame_index", keep="first")
+              .reset_index(drop=True))
     return smooth
 
 
@@ -199,6 +216,7 @@ def load_dataset_with_pose(
     annotations_csv: str,
     fps: float = float(RECORDING_FPS),
     dataset: str = "",
+    n_trim_padding: int = 0,
 ) -> list[tuple[VideoRecord, pd.DataFrame]]:
     """Like :func:`load_dataset` but also returns the clipped pose DataFrame.
 
@@ -211,6 +229,12 @@ def load_dataset_with_pose(
         Dataset tag written into every ``VideoRecord.dataset``.  When set,
         ``record.athlete`` is ``"{dataset}:{person_id}"``; otherwise the legacy
         path-derived name is used.
+    n_trim_padding : int
+        Number of padding frames used when the video was trimmed (same value as
+        ``n_padding`` in ``trim_videos.yaml``).  When >0, the function recovers
+        the original-video frame offset that ffmpeg's ``setpts=PTS-STARTPTS``
+        discarded, so annotation frame numbers align with pose feature indices.
+        Set to 0 (default) for untrimmed videos.
 
     Returns
     -------
@@ -221,18 +245,23 @@ def load_dataset_with_pose(
 
     for video_path, group in ann_df.groupby("video_path"):
         pose_path = _pose_path(video_path)
-        smooth = _load_smooth(pose_path)
+        smooth = _load_smooth(pose_path, fps=fps)
         if smooth is None:
             continue
 
         feats = extract_features(smooth, fps=fps)
         T = len(feats)
-        first_frame = int(smooth["frame_index"].iloc[0])
+
+        first_ann = int(group["frame_number"].min())
+        last_ann  = int(group["frame_number"].max())
+
+        # Recover the original-frame offset lost by setpts=PTS-STARTPTS trimming.
+        trim_start = max(0, first_ann - n_trim_padding) if n_trim_padding > 0 else 0
+        first_frame = int(smooth["frame_index"].iloc[0]) + trim_start
+
         labels = _annotation_to_labels(group, first_frame, T)
 
         # Clip to the annotated visibility window exactly
-        first_ann = int(group["frame_number"].min())
-        last_ann  = int(group["frame_number"].max())
         start_idx = max(0, first_ann - ANNOTATION_PADDING - first_frame)
         end_idx   = min(T, last_ann  + ANNOTATION_PADDING - first_frame + 1)
 
@@ -258,6 +287,7 @@ def load_dataset(
     annotations_csv: str,
     fps: float = float(RECORDING_FPS),
     dataset: str = "",
+    n_trim_padding: int = 0,
 ) -> list[VideoRecord]:
     """Load all annotated videos into VideoRecord objects.
 
@@ -270,24 +300,35 @@ def load_dataset(
         Dataset tag written into every ``VideoRecord.dataset``.  When set,
         ``record.athlete`` is ``"{dataset}:{person_id}"``; otherwise the legacy
         path-derived name is used.
+    n_trim_padding : int
+        Number of padding frames used when the video was trimmed (same value as
+        ``n_padding`` in ``trim_videos.yaml``).  When >0, the function recovers
+        the original-video frame offset that ffmpeg's ``setpts=PTS-STARTPTS``
+        discarded, so annotation frame numbers align with pose feature indices.
+        Set to 0 (default) for untrimmed videos.
     """
     ann_df = pd.read_csv(annotations_csv)
     records: list[VideoRecord] = []
 
     for video_path, group in ann_df.groupby("video_path"):
         pose_path = _pose_path(video_path)
-        smooth = _load_smooth(pose_path)
+        smooth = _load_smooth(pose_path, fps=fps)
         if smooth is None:
             continue
 
         feats = extract_features(smooth, fps=fps)
         T = len(feats)
-        first_frame = int(smooth["frame_index"].iloc[0])
+
+        first_ann = int(group["frame_number"].min())
+        last_ann  = int(group["frame_number"].max())
+
+        # Recover the original-frame offset lost by setpts=PTS-STARTPTS trimming.
+        trim_start = max(0, first_ann - n_trim_padding) if n_trim_padding > 0 else 0
+        first_frame = int(smooth["frame_index"].iloc[0]) + trim_start
+
         labels = _annotation_to_labels(group, first_frame, T)
 
         # Clip to the annotated visibility window exactly
-        first_ann = int(group["frame_number"].min())
-        last_ann  = int(group["frame_number"].max())
         start_idx = max(0, first_ann - ANNOTATION_PADDING - first_frame)
         end_idx   = min(T, last_ann  + ANNOTATION_PADDING - first_frame + 1)
         feats  = feats[start_idx:end_idx]
@@ -309,6 +350,7 @@ def load_dataset(
 def load_datasets(
     csv_paths: dict[str, str],
     fps: float = float(RECORDING_FPS),
+    n_trim_padding: int = 0,
 ) -> list[VideoRecord]:
     """Load and combine multiple datasets.
 
@@ -320,23 +362,17 @@ def load_datasets(
         to ``"{dataset_name}:{person_id}"``.
     fps : float
         Recording frame rate.
+    n_trim_padding : int
+        Passed through to :func:`load_dataset`; see that function's docstring.
 
     Returns
     -------
     list[VideoRecord]
         Combined records from all datasets, tagged by dataset name.
-
-    Example
-    -------
-    >>> records = load_datasets(
-    ...     {"optojump": "data/output/annotations/optojump/visibility_annotations.csv",
-    ...      "tempos":   "data/output/annotations/tempos/ml_labels.csv"},
-    ...     fps=120.0,
-    ... )
     """
     records: list[VideoRecord] = []
     for dataset_name, csv_path in csv_paths.items():
-        records.extend(load_dataset(csv_path, fps=fps, dataset=dataset_name))
+        records.extend(load_dataset(csv_path, fps=fps, dataset=dataset_name, n_trim_padding=n_trim_padding))
     return records
 
 
@@ -502,8 +538,17 @@ def tuning_split(
     -------
     (train_records, val_records)
     """
+    import warnings
     rng = np.random.default_rng(seed)
     athletes = sorted({r.athlete for r in records})
+    max_val = max(0, len(athletes) - 1)
+    if n_val_athletes > max_val:
+        warnings.warn(
+            f"tuning_split: n_val_athletes={n_val_athletes} exceeds available athletes "
+            f"({len(athletes)}); capping to {max_val}.",
+            stacklevel=2,
+        )
+        n_val_athletes = max_val
     val_athletes = set(rng.choice(athletes, size=n_val_athletes, replace=False).tolist())
     train = [r for r in records if r.athlete not in val_athletes]
     val = [r for r in records if r.athlete in val_athletes]

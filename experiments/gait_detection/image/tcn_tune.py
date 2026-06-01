@@ -29,7 +29,7 @@ import optuna
 from torch.utils.data import DataLoader
 
 import src.gait.detection.dilations as dilation_schedules
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config
 from experiments.gait_detection.pose_data.tcn_tuning import _suggest
 from src.gait.detection.model import TCN
 from src.gait.detection.train import Trainer, TrainerConfig, seed_everything
@@ -183,7 +183,7 @@ if __name__ == "__main__":
         storage = storage_path
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 

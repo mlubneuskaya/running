@@ -8,14 +8,18 @@ from dataclasses import dataclass, field
 
 @dataclass
 class ExperimentConfig:
-    # ── Datasets ─────────────────────────────────────────────────────────────
-    # Primary dataset (optojump).  Used directly by single-dataset experiments.
-    annotations_csv: str = "data/output/annotations/optojump/visibility_annotations.csv"
+    # ── Dataset ───────────────────────────────────────────────────────────────
+    # Single place to change datasets/fps/split: edit configs/dataset.yaml and
+    # set mode = "tempos" | "optojump" | "cross".
+    dataset_config: str = "configs/dataset.yaml"
 
-    # Optional second dataset (tempos).  Empty string = not used.
-    tempos_annotations_csv: str = ""
-
+    # The fields below are auto-populated from dataset_config in __post_init__.
+    # Override them here only in tests or one-off scripts.
+    annotations_csv: str = ""
+    dataset: str = ""
     fps: float = 120.0
+    n_trim_padding: int = 0
+
     n_classes: int = 3
     class_names: list[str] = field(default_factory=lambda: ["left_stance", "right_stance", "flight"])
 
@@ -32,10 +36,6 @@ class ExperimentConfig:
     lr_schedule_patience: int = 10
 
     # Feature selection
-    # Set to a list of feature indices to use a subset of the 22 features.
-    # None = use all 22. Use the FEATURE_GROUPS dict in stage1_baselines.py
-    # as named presets, or pass indices directly after inspecting Stage 1 results.
-    #
     # Index layout (from features.py):
     #   0–5   norm. y-positions   (L/R heel, big_toe, ankle)
     #   6–11  y-velocities        (L/R heel, big_toe, ankle)
@@ -49,7 +49,7 @@ class ExperimentConfig:
     n_filters: int = 64
     kernel_size: int = 3
 
-    # Optuna — single joint study over all 5 hyperparameters
+    # Optuna
     optuna_storage: str = "sqlite:///experiments/gait_detection/study.db"
     study_name: str = "tcn_joint"
     n_trials_total: int = 50
@@ -61,6 +61,22 @@ class ExperimentConfig:
     # Tuning split
     n_val_athletes_tuning: int = 4
 
+    def __post_init__(self):
+        if self.dataset_config and not self.annotations_csv:
+            self._load_dataset_params()
+
+    def _load_dataset_params(self) -> None:
+        from src.pose.utils.load_config import load_config
+        dc = load_config(self.dataset_config)
+        mode = dc["mode"]
+        # In cross mode the training dataset is optojump
+        ds_key = "optojump" if mode == "cross" else mode
+        params = dc["datasets"][ds_key]
+        self.annotations_csv  = params["annotations_csv"]
+        self.dataset          = params["dataset"]
+        self.fps              = float(params["fps"])
+        self.n_trim_padding   = int(params["n_trim_padding"])
+
     def checkpoint_path(self, name: str) -> str:
         os.makedirs(self.checkpoint_dir, exist_ok=True)
         return os.path.join(self.checkpoint_dir, f"{name}.pt")
@@ -68,3 +84,24 @@ class ExperimentConfig:
     def results_path(self, name: str) -> str:
         os.makedirs(self.output_dir, exist_ok=True)
         return os.path.join(self.output_dir, f"{name}.json")
+
+
+def get_split_config(dataset_config_path: str) -> dict:
+    """Return the n_test / seed dict for the active mode."""
+    from src.pose.utils.load_config import load_config
+    dc = load_config(dataset_config_path)
+    return dc["splits"][dc["mode"]]
+
+
+def get_test_dataset_params(dataset_config_path: str) -> dict | None:
+    """Return test-dataset params for cross mode; None otherwise.
+
+    In cross mode the test set is the full tempos dataset (no hold-out split).
+    In tempos/optojump modes the test set comes from train_test_split, so this
+    returns None.
+    """
+    from src.pose.utils.load_config import load_config
+    dc = load_config(dataset_config_path)
+    if dc["mode"] != "cross":
+        return None
+    return dc["datasets"]["tempos"]

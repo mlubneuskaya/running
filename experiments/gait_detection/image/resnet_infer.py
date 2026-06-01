@@ -28,7 +28,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config, get_test_dataset_params
 from src.gait.detection.train import get_device
 from src.gait.gait_data.dataset import train_test_split
 from src.gait.image.dataset import load_image_records_for_finetune
@@ -73,20 +73,36 @@ def main(
     video_input_dir: str,
     n_test: dict,
     seed: int,
+    test_image_cfg: dict | None = None,
 ) -> None:
     os.makedirs(output_dir, exist_ok=True)
     probs_dir = os.path.join(output_dir, "probs")
     os.makedirs(probs_dir, exist_ok=True)
 
     logger.info("Loading image records …")
-    all_records_info = load_image_records_for_finetune(
-        cfg.annotations_csv, pose_dir, video_input_dir
+    train_records_info = load_image_records_for_finetune(
+        cfg.annotations_csv, pose_dir, video_input_dir, dataset=cfg.dataset
     )
-    all_records = [r for r, _, _ in all_records_info]
-    logger.info("%d records loaded.", len(all_records))
+    logger.info("%d train records loaded.", len(train_records_info))
 
-    _, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
-    test_set = set(test_athletes)
+    test_ds_params = get_test_dataset_params(cfg.dataset_config)
+    if test_ds_params is not None and test_image_cfg is not None:
+        test_records_info = load_image_records_for_finetune(
+            test_ds_params["annotations_csv"],
+            test_image_cfg["pose_dir"],
+            test_image_cfg.get("video_input_dir", "data/input/tempos"),
+            dataset=test_ds_params["dataset"],
+        )
+        test_athletes = sorted({r.athlete for r, _, _ in test_records_info})
+        logger.info("Cross mode: %d train (optojump), %d test (tempos).",
+                    len(train_records_info), len(test_records_info))
+    else:
+        all_records = [r for r, _, _ in train_records_info]
+        _, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)
+        test_set_athletes   = set(test_athletes)
+        test_records_info  = [ri for ri in train_records_info if ri[0].athlete in test_set_athletes]
+        train_records_info = [ri for ri in train_records_info if ri[0].athlete not in test_set_athletes]
+        logger.info("Split: %d train, %d test.", len(train_records_info), len(test_records_info))
 
     device = get_device()
     model  = ResNetFinetune(
@@ -114,22 +130,21 @@ def main(
         "records":       [],
     }
 
-    for rec_info in all_records_info:
-        rec   = rec_info[0]
-        split = "test" if rec.athlete in test_set else "train"
-
-        probs    = _run_record(model, rec_info, img_size, bbox_padding, cfg.batch_size, device)
-        out_name = _safe_stem(rec.video_path) + ".npy"
-        out_path = os.path.join(probs_dir, out_name)
-        np.save(out_path, probs)
-        manifest["records"].append({
-            "video_path": rec.video_path,
-            "athlete":    rec.athlete,
-            "split":      split,
-            "n_frames":   int(probs.shape[0]),
-            "probs_path": out_path,
-        })
-        logger.info("  [%s] %s → %s (%d frames)", split, rec.athlete, out_name, probs.shape[0])
+    for split, split_records_info in [("train", train_records_info), ("test", test_records_info)]:
+        for rec_info in split_records_info:
+            rec      = rec_info[0]
+            probs    = _run_record(model, rec_info, img_size, bbox_padding, cfg.batch_size, device)
+            out_name = _safe_stem(rec.video_path) + ".npy"
+            out_path = os.path.join(probs_dir, out_name)
+            np.save(out_path, probs)
+            manifest["records"].append({
+                "video_path": rec.video_path,
+                "athlete":    rec.athlete,
+                "split":      split,
+                "n_frames":   int(probs.shape[0]),
+                "probs_path": out_path,
+            })
+            logger.info("  [%s] %s → %s (%d frames)", split, rec.athlete, out_name, probs.shape[0])
 
     manifest_path = os.path.join(output_dir, "manifest.json")
     with open(manifest_path, "w") as f:
@@ -173,9 +188,10 @@ if __name__ == "__main__":
     else:
         raise ValueError("Either 'training_json' or 'best_params_json' must be set.")
 
-    split_cfg = load_config(raw["split_config"])
-    n_test    = split_cfg["n_test"]
-    seed      = split_cfg.get("seed", 42)
+    split_cfg      = get_split_config(cfg.dataset_config)
+    n_test         = split_cfg["n_test"]
+    seed           = split_cfg.get("seed", 42)
+    test_image_cfg = raw.get("test_dataset")
 
     main(cfg, params, backbone_name, img_size, bbox_padding, output_dir, pose_dir, video_input_dir,
-         n_test=n_test, seed=seed)
+         n_test=n_test, seed=seed, test_image_cfg=test_image_cfg)

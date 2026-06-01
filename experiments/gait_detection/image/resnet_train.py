@@ -25,7 +25,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from experiments.gait_detection.config import ExperimentConfig
+from experiments.gait_detection.config import ExperimentConfig, get_split_config
 from src.gait.detection.train import get_device, seed_everything
 from src.gait.gait_data.dataset import train_test_split
 from src.gait.image.dataset import load_image_records_for_finetune
@@ -112,7 +112,7 @@ def main(
         ckpt_path = cfg.checkpoint_path("checkpoint")
         torch.save(model.state_dict(), ckpt_path)
         mlflow.log_metric("final_loss", train_losses[-1])
-        mlflow.log_artifact(ckpt_path, artifact_path="checkpoints")
+        mlflow.log_param("checkpoint_path", ckpt_path)
         logger.info("Checkpoint saved → %s", ckpt_path)
 
     out = {
@@ -172,7 +172,7 @@ if __name__ == "__main__":
         best_params_json, best_epoch, _bp["best_val_loss"],
     )
 
-    split_cfg = load_config(raw["split_config"])
+    split_cfg = get_split_config(cfg.dataset_config)
     n_test    = split_cfg["n_test"]
     seed      = split_cfg.get("seed", 42)
 
