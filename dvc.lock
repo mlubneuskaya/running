@@ -138,8 +138,8 @@ stages:
     outs:
     - path: data/output/pose/tuned_yolo/
       hash: md5
-      md5: 055f82d445990f0051a7f289587cbefc.dir
-      size: 717643281
+      md5: d5e7dae7a2318299ca4914b7a040854c.dir
+      size: 721164087
       nfiles: 876
   pose_extract_mediapipe:
     cmd: python scripts/run_pose_detection.py --config 
