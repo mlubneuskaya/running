@@ -108,6 +108,10 @@ stages:
       - configs/experiments/pose_data/baselines.yaml:
           - experiment.n_val_athletes_tuning
           - experiment.random_seed
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     metrics:
       - data/output/gait/pose_data/stage1/results.json
 
@@ -127,6 +131,10 @@ stages:
           - optuna.n_trials
           - experiment.feature_idx
           - search_space
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/pose_data/stage2/best_params.json
       - data/output/gait/pose_data/stage2/study.log
@@ -144,6 +152,10 @@ stages:
       - configs/experiments/pose_data/xgb_tuning.yaml:
           - optuna.n_trials
           - experiment.feature_idx
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/pose_data/stage3/best_params.json
       - data/output/gait/pose_data/stage3/checkpoints/model.pkl
@@ -161,6 +173,10 @@ stages:
     params:
       - configs/experiments/pose_data/xgb_loao.yaml:
           - experiment.feature_idx
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/pose_data/xgb_loao/manifest.json
       - data/output/gait/pose_data/xgb_loao/loao.json
@@ -183,6 +199,10 @@ stages:
           - experiment.batch_size
           - experiment.max_epochs
           - experiment.early_stopping_patience
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/pose_data/stage4/
 
@@ -203,6 +223,10 @@ stages:
           - experiment.feature_idx
           - experiment.batch_size
           - log_every
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/pose_data/stage5/training.json
       - data/output/gait/pose_data/stage5/checkpoint.pt:
@@ -222,6 +246,10 @@ stages:
     params:
       - configs/experiments/pose_data/tcn_inference.yaml:
           - experiment.feature_idx
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/pose_data/stage6/manifest.json
       - data/output/gait/pose_data/stage6/probs/
@@ -267,6 +295,10 @@ stages:
       - configs/experiments/image/baselines.yaml:
           - optuna.n_trials
           - experiment.n_val_athletes_tuning
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/image/stage1/results.json
       - data/output/gait/image/stage1/checkpoints/xgboost_best.pkl
@@ -287,6 +319,10 @@ stages:
           - optuna.n_trials
           - experiment.n_val_athletes_tuning
           - search_space
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/image/stage2/best_params.json
       - data/output/gait/image/stage2/study.log
@@ -307,6 +343,10 @@ stages:
           - experiment.max_epochs
           - experiment.early_stopping_patience
           - experiment.batch_size
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/image/stage4/
 
@@ -326,6 +366,10 @@ stages:
       - configs/experiments/image/tcn_training.yaml:
           - experiment.batch_size
           - log_every
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/image/stage5/
 
@@ -343,6 +387,10 @@ stages:
     params:
       - configs/experiments/image/tcn_inference.yaml:
           - experiment.n_classes
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/image/stage6/manifest.json
       - data/output/gait/image/stage6/probs/
@@ -357,6 +405,11 @@ stages:
       - data/output/gait/image/stage1/results.json
       - data/output/gait/image_features/
       - data/output/annotations/optojump/visibility_annotations.csv
+    params:
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/image/xgb_loao/manifest.json
       - data/output/gait/image/xgb_loao/loao.json
@@ -376,6 +429,10 @@ stages:
     params:
       - configs/experiments/pose_data/xgb_inference.yaml:
           - experiment.feature_idx
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/pose_data/xgb_infer/manifest.json
       - data/output/gait/pose_data/xgb_infer/probs/
@@ -391,6 +448,11 @@ stages:
       - data/output/gait/image_features/
       - data/output/annotations/optojump/visibility_annotations.csv
       - data/output/annotations/tempos/ml_labels.csv
+    params:
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/image/xgb_infer/manifest.json
       - data/output/gait/image/xgb_infer/probs/
@@ -409,6 +471,10 @@ stages:
           - optuna.n_trials
           - experiment.random_seed
           - search_space
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/image/resnet/tune/best_params.json
 
@@ -429,6 +495,10 @@ stages:
           - experiment.max_epochs
           - experiment.early_stopping_patience
           - experiment.batch_size
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/image/resnet/loao/manifest.json
       - data/output/gait/image/resnet/loao/loao.json
@@ -444,6 +514,11 @@ stages:
       - data/output/gait/image/resnet/tune/best_params.json
       - data/output/gait/image/resnet/loao/loao.json
       - data/output/annotations/optojump/visibility_annotations.csv
+    params:
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/image/resnet/train/checkpoint.pt:
           cache: true
@@ -460,6 +535,11 @@ stages:
       - data/output/gait/image/resnet/tune/best_params.json
       - data/output/annotations/optojump/visibility_annotations.csv
       - data/output/annotations/tempos/ml_labels.csv
+    params:
+      - configs/dataset.yaml:
+          - mode
+          - splits
+          - datasets
     outs:
       - data/output/gait/image/resnet/infer/manifest.json
       - data/output/gait/image/resnet/infer/probs/
