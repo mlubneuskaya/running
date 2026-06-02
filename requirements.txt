@@ -21,6 +21,7 @@ async-lru==2.1.0
 asyncssh==2.22.0
 atpublic==7.0.0
 attrs==25.4.0
+av==17.0.1
 azure-core==1.39.0
 azure-datalake-store==0.0.53
 azure-identity==1.25.3

@@ -479,10 +479,9 @@ def train_test_split(
         Example: ``{"optojump": 3, "tempos": 2}`` — draws 3 athletes from the
         optojump subset and 2 from the tempos subset independently.
         Set a value to 0 to keep all athletes of a dataset in training.
-        Load this from ``configs/split.yaml`` via the ``split_config`` key in
-        your experiment config.
+        Load via ``get_split_config(cfg.dataset_config)["n_test"]``.
     seed : int
-        Random seed for reproducibility.  Load from ``configs/split.yaml``.
+        Random seed for reproducibility.  Load via ``get_split_config``.
 
     Returns
     -------
@@ -494,7 +493,7 @@ def train_test_split(
             "'n_test' must be a dict with at least one dataset entry, "
             "e.g. {\"optojump\": 2, \"tempos\": 0}.\n"
             "Use 0 to keep all athletes of a dataset in training.\n"
-            "Add 'split_config: \"configs/split.yaml\"' to your experiment config."
+            "Use get_split_config(cfg.dataset_config) to load n_test from configs/dataset.yaml."
         )
     rng = np.random.default_rng(seed)
     test_set: set[str] = set()
