@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.signal import butter, filtfilt
 
-from src.gait.gait_data.filters import GaitInertiaFilter
+from src.gait.gait_data.filters import GaitSideFilter
 
 
 def get_valid_frames(pose_data: list[dict], keypoints: list) -> list[int]:
@@ -120,7 +120,7 @@ def smooth_pose_data(
     anchor_bases = list(dict.fromkeys(
         a.split("right_")[-1].split("left_")[-1] for a in anchors
     ))
-    gait_side_filter = GaitInertiaFilter(side_bases, anchor_bases)
+    gait_side_filter = GaitSideFilter(side_bases, anchor_bases)
     stable_pose_df = gait_side_filter.filter_data(pose_df)
 
     accel_df = acceleration(stable_pose_df, fps=fps)
