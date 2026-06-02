@@ -205,8 +205,8 @@ stages:
     outs:
     - path: data/output/pose/notebooks/ray_tune_model_comparison.ipynb
       hash: md5
-      md5: 49aad4b3acfa2ae7a678ae0e5f8a5a99
-      size: 1699107
+      md5: 978d786a43c0739562cee6bfb43b3b3e
+      size: 1838777
   pose_extract:
     cmd: python scripts/run_pose_detection.py --config configs/config_yolo.yaml
     deps:
@@ -794,7 +794,7 @@ stages:
     deps:
     - path: configs/dataset.yaml
       hash: md5
-      md5: 0ab7e85a94267d7c9f6a06d207edfbae
+      md5: 4e9db0b252feee1ac61ac9ca12a5413f
       size: 1686
     - path: configs/experiments/image/feature_extract.yaml
       hash: md5
@@ -844,14 +844,14 @@ stages:
     outs:
     - path: data/output/gait/image_features/
       hash: md5
-      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
-      size: 585984
-      nfiles: 2
+      md5: 8988e0f368611b53e4fdd30e42df760d.dir
+      size: 57428352
+      nfiles: 179
     - path: data/output/gait/image_features_tempos/
       hash: md5
-      md5: d751713988987e9331980363e24189ce.dir
-      size: 0
-      nfiles: 0
+      md5: b9b46ef8fc969ec3e2cdd3a572b8b658.dir
+      size: 94570496
+      nfiles: 160
   img_baselines:
     cmd: python -m experiments.gait_detection.image.baselines --config 
       configs/experiments/image/baselines.yaml
@@ -866,9 +866,9 @@ stages:
       size: 1574254
     - path: data/output/gait/image_features/
       hash: md5
-      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
-      size: 585984
-      nfiles: 2
+      md5: 8988e0f368611b53e4fdd30e42df760d.dir
+      size: 57428352
+      nfiles: 179
     - path: experiments/gait_detection/image/baselines.py
       hash: md5
       md5: 7990c2285bc9533c4af57d3b3ee821f8
@@ -888,11 +888,11 @@ stages:
     outs:
     - path: data/output/gait/image/stage1/checkpoints/xgboost_best.pkl
       hash: md5
-      md5: 7b51a7d385053fea32148753b1615650
-      size: 554683
+      md5: fe479d4ce754d70e634103cfd7f0aded
+      size: 5150046
     - path: data/output/gait/image/stage1/results.json
       hash: md5
-      md5: 3f0eae68c778e2ee49148edc410e4990
+      md5: 95ce08196cf5fa85436d6349547ac048
       size: 551
   img_tcn_tune:
     cmd: python -m experiments.gait_detection.image.tcn_tune --config 
@@ -908,9 +908,9 @@ stages:
       size: 1574254
     - path: data/output/gait/image_features/
       hash: md5
-      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
-      size: 585984
-      nfiles: 2
+      md5: 8988e0f368611b53e4fdd30e42df760d.dir
+      size: 57428352
+      nfiles: 179
     - path: experiments/gait_detection/image/tcn_tune.py
       hash: md5
       md5: a18fd93556ac773de78145df6a801d11
@@ -968,12 +968,12 @@ stages:
     outs:
     - path: data/output/gait/image/stage2/best_params.json
       hash: md5
-      md5: 56d0e382b283f71e0f3595416b7ba34a
-      size: 1732
+      md5: cded049e8610ee6b61f5009df87d2057
+      size: 1751
     - path: data/output/gait/image/stage2/study.log
       hash: md5
-      md5: 16422042fe5b23efd16381b0b081d22a
-      size: 586748
+      md5: 4509a75d727da9e61cc6e1f06b9ffe65
+      size: 643754
   img_tcn_loao:
     cmd: python -m experiments.gait_detection.image.tcn_loao --config 
       configs/experiments/image/tcn_leave_one_out.yaml
@@ -984,13 +984,13 @@ stages:
       size: 1574254
     - path: data/output/gait/image/stage2/best_params.json
       hash: md5
-      md5: 56d0e382b283f71e0f3595416b7ba34a
-      size: 1732
+      md5: cded049e8610ee6b61f5009df87d2057
+      size: 1751
     - path: data/output/gait/image_features/
       hash: md5
-      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
-      size: 585984
-      nfiles: 2
+      md5: 8988e0f368611b53e4fdd30e42df760d.dir
+      size: 57428352
+      nfiles: 179
     - path: experiments/gait_detection/image/tcn_loao.py
       hash: md5
       md5: 161811e7a083714a8b4119d77b4c4247
@@ -1015,9 +1015,9 @@ stages:
     outs:
     - path: data/output/gait/image/stage4/
       hash: md5
-      md5: 86b8f8be2a7f4333af8081bfebcb06a1.dir
-      size: 102866761
-      nfiles: 7
+      md5: 0ffb82d03d40ba85c455e7812d36d310.dir
+      size: 375837025
+      nfiles: 204
   img_tcn_train:
     cmd: python -m experiments.gait_detection.image.tcn_train --config 
       configs/experiments/image/tcn_training.yaml
@@ -1028,18 +1028,18 @@ stages:
       size: 1574254
     - path: data/output/gait/image/stage2/best_params.json
       hash: md5
-      md5: 56d0e382b283f71e0f3595416b7ba34a
-      size: 1732
+      md5: cded049e8610ee6b61f5009df87d2057
+      size: 1751
     - path: data/output/gait/image/stage4/
       hash: md5
-      md5: 86b8f8be2a7f4333af8081bfebcb06a1.dir
-      size: 102866761
-      nfiles: 7
+      md5: 0ffb82d03d40ba85c455e7812d36d310.dir
+      size: 375837025
+      nfiles: 204
     - path: data/output/gait/image_features/
       hash: md5
-      md5: 880c14d08eb3fda69ddac1676c8a2cae.dir
-      size: 585984
-      nfiles: 2
+      md5: 8988e0f368611b53e4fdd30e42df760d.dir
+      size: 57428352
+      nfiles: 179
     - path: experiments/gait_detection/image/tcn_train.py
       hash: md5
       md5: 4644c2921f19bff1148c5cee78d42a32
@@ -1063,8 +1063,8 @@ stages:
     outs:
     - path: data/output/gait/image/stage5/
       hash: md5
-      md5: feca053e804b2e21faea359bc4bd529f.dir
-      size: 51425879
+      md5: 103127b10794acbbbdc8fc6c5d282a04.dir
+      size: 17066202
       nfiles: 2
   img_tcn_infer:
     cmd: python -m experiments.gait_detection.image.tcn_infer --config 
