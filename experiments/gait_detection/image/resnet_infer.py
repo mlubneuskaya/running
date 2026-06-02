@@ -81,7 +81,8 @@ def main(
 
     logger.info("Loading image records …")
     train_records_info = load_image_records_for_finetune(
-        cfg.annotations_csv, pose_dir, video_input_dir, dataset=cfg.dataset
+        cfg.annotations_csv, pose_dir, video_input_dir,
+        dataset=cfg.dataset, n_trim_padding=cfg.n_trim_padding,
     )
     logger.info("%d train records loaded.", len(train_records_info))
 
@@ -92,6 +93,7 @@ def main(
             test_image_cfg["pose_dir"],
             test_image_cfg.get("video_input_dir", "data/input/tempos"),
             dataset=test_ds_params["dataset"],
+            n_trim_padding=int(test_ds_params.get("n_trim_padding", 0)),
         )
         test_athletes = sorted({r.athlete for r, _, _ in test_records_info})
         logger.info("Cross mode: %d train (optojump), %d test (tempos).",

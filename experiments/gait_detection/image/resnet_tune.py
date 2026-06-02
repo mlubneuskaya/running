@@ -162,7 +162,8 @@ def main(
 
     logger.info("Loading image records for fine-tuning …")
     all_records_info = load_image_records_for_finetune(
-        cfg.annotations_csv, pose_dir, video_input_dir
+        cfg.annotations_csv, pose_dir, video_input_dir,
+        n_trim_padding=cfg.n_trim_padding,
     )
     all_records = [r for r, _, _ in all_records_info]
     logger.info("%d records loaded.", len(all_records))

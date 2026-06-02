@@ -68,7 +68,8 @@ def main(
     os.makedirs(probs_dir, exist_ok=True)
 
     logger.info("Loading image dataset …")
-    all_records = load_image_dataset(cfg.annotations_csv, features_dir, video_input_dir, dataset=cfg.dataset)
+    all_records = load_image_dataset(cfg.annotations_csv, features_dir, video_input_dir,
+                                      dataset=cfg.dataset, n_trim_padding=cfg.n_trim_padding)
     logger.info("%d records loaded.", len(all_records))
 
     test_ds_params = get_test_dataset_params(cfg.dataset_config)
@@ -79,6 +80,7 @@ def main(
             test_image_cfg["features_dir"],
             test_image_cfg.get("video_input_dir", "data/input/tempos"),
             dataset=test_ds_params["dataset"],
+            n_trim_padding=int(test_ds_params.get("n_trim_padding", 0)),
         )
         test_athletes = sorted({r.athlete for r in test_records})
         logger.info("Cross mode: %d train (optojump), %d test (tempos).",

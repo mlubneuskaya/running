@@ -69,7 +69,8 @@ def main(
     os.makedirs(probs_dir, exist_ok=True)
 
     logger.info("Loading image dataset …")
-    all_records = load_image_dataset(cfg.annotations_csv, features_dir, video_input_dir)
+    all_records = load_image_dataset(cfg.annotations_csv, features_dir, video_input_dir,
+                                      n_trim_padding=cfg.n_trim_padding)
     logger.info("%d records loaded.", len(all_records))
 
     records, _, test_athletes = train_test_split(all_records, n_test=n_test, seed=seed)

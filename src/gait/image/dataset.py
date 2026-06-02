@@ -40,6 +40,7 @@ def load_image_dataset(
     features_dir: str,
     video_input_dir: str = "data/input/optojump",
     dataset: str = "",
+    n_trim_padding: int = 0,
 ) -> list[VideoRecord]:
     """Load annotated videos using pre-extracted CNN feature files.
 
@@ -58,6 +59,11 @@ def load_image_dataset(
         Dataset tag written into every ``VideoRecord.dataset``.  When set,
         ``record.athlete`` is ``"{dataset}:{person_id}"``; otherwise the legacy
         path-derived name is used.
+    n_trim_padding : int
+        Number of padding frames used when the video was trimmed (same value as
+        ``n_padding`` in ``trim_videos.yaml``).  Mirrors the same parameter in
+        ``load_dataset`` — required so annotation frame numbers align with the
+        feature array indices for trimmed videos.
 
     Returns
     -------
@@ -79,21 +85,24 @@ def load_image_dataset(
         features = np.load(feat_path)    # (T, feature_dim), float32
         T        = len(features)
 
-        # Frame index 0 in the feature array corresponds to video frame 0.
-        # Annotation frame_numbers are 0-indexed 120fps frame numbers — they
-        # align directly with the feature array index.
-        first_frame = 0
-        labels = _annotation_to_labels(group, first_frame, T)
-
         first_ann = int(group["frame_number"].min())
         last_ann  = int(group["frame_number"].max())
+
+        # Recover the original-frame offset lost by setpts=PTS-STARTPTS trimming,
+        # matching the same logic in load_dataset() for pose data.
+        trim_start  = max(0, first_ann - n_trim_padding) if n_trim_padding > 0 else 0
+        first_frame = trim_start
+
+        labels = _annotation_to_labels(group, first_frame, T)
+
         start_idx = max(0, first_ann - ANNOTATION_PADDING - first_frame)
         end_idx   = min(T, last_ann  + ANNOTATION_PADDING - first_frame + 1)
 
         if start_idx >= end_idx:
             raise ValueError(
                 f"Empty clip window for {video_path}: "
-                f"first_ann={first_ann}, last_ann={last_ann}, T={T}"
+                f"first_ann={first_ann}, last_ann={last_ann}, T={T}, "
+                f"n_trim_padding={n_trim_padding}"
             )
 
         raw_pid = group["person_id"].iloc[0] if "person_id" in group.columns else None
@@ -121,6 +130,7 @@ def load_image_records_for_finetune(
     pose_dir: str,
     video_input_dir: str = "data/input/optojump",
     dataset: str = "",
+    n_trim_padding: int = 0,
 ) -> list[tuple[VideoRecord, str, int]]:
     """Load annotation info for full-network fine-tuning (no pre-extracted features).
 
@@ -130,6 +140,8 @@ def load_image_records_for_finetune(
         Dataset tag written into every ``VideoRecord.dataset``.  When set,
         ``record.athlete`` is ``"{dataset}:{person_id}"``; otherwise the legacy
         path-derived name is used.
+    n_trim_padding : int
+        Number of padding frames used when the video was trimmed.
 
     Returns
     -------
@@ -155,13 +167,15 @@ def load_image_records_for_finetune(
         with open(pose_path) as f:
             T = len(json.load(f)["pose_data"])
 
-        first_frame = 0
-        labels      = _annotation_to_labels(group, first_frame, T)
-
         first_ann = int(group["frame_number"].min())
         last_ann  = int(group["frame_number"].max())
-        start_idx = max(0, first_ann - ANNOTATION_PADDING)
-        end_idx   = min(T, last_ann  + ANNOTATION_PADDING + 1)
+
+        trim_start  = max(0, first_ann - n_trim_padding) if n_trim_padding > 0 else 0
+        first_frame = trim_start
+
+        labels    = _annotation_to_labels(group, first_frame, T)
+        start_idx = max(0, first_ann - ANNOTATION_PADDING - first_frame)
+        end_idx   = min(T, last_ann  + ANNOTATION_PADDING - first_frame + 1)
 
         raw_pid = group["person_id"].iloc[0] if "person_id" in group.columns else None
         if raw_pid is None or pd.isna(raw_pid):
