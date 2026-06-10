@@ -67,7 +67,6 @@ def calculate_jitter_metrics(df_coords, keypoints, fps, scale_factor):
         )
 
         acceleration = v.diff().abs()
-        acceleration = get_trimmed_series(acceleration)
         acceleration = acceleration.interpolate(method="linear")
 
         jitter_95th_val = (

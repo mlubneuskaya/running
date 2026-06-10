@@ -27,6 +27,7 @@ def aggregate_experiment_results(
     detector,
     links_dict,
     frame_ranges: "dict[str, tuple[int, int]] | None" = None,
+    keypoints_filter: "list[str] | None" = None,
 ):
     """Aggregate jitter, link-stability and detection-gap metrics across videos.
 
@@ -43,6 +44,10 @@ def aggregate_experiment_results(
         (inclusive, 0-based video frame indices).  When provided, only frames in
         ``[first_visible, last_visible]`` are included in the analysis.
         Pass ``None`` to use all frames (legacy behaviour).
+    keypoints_filter : list[str] | None
+        If provided, jitter and gap analysis are restricted to these keypoints.
+        Link analysis always uses all keypoints required by links_dict.
+        Pass ``None`` to use all keypoints present in the JSON.
     """
     global_links = []
     global_jitter = []
@@ -54,7 +59,12 @@ def aggregate_experiment_results(
         with open(path, "r") as f:
             raw_json = json.load(f)
 
-        keypoints_list = list(set([x for xs in raw_json["connections"] for x in xs]))
+        all_keypoints = list(set([x for xs in raw_json["connections"] for x in xs]))
+        keypoints_list = (
+            [k for k in keypoints_filter if k in all_keypoints]
+            if keypoints_filter is not None
+            else all_keypoints
+        )
         pose_data = raw_json["pose_data"]
 
         # ── optionally restrict to the annotated visibility window ──────────
